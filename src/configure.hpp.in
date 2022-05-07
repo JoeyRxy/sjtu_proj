@@ -1,0 +1,13 @@
+#ifndef CONFIGURE_H
+#define CONFIGURE_H
+
+#cmakedefine RSRP_TYPE ${RSRP_TYPE}
+#cmakedefine POINT_TYPE ${POINT_TYPE}
+#cmakedefine PROB_TYPE ${PROB_TYPE}
+#cmakedefine MAP_SIZE ${MAP_SIZE}
+#cmakedefine ND_MU ${ND_MU}
+#cmakedefine ND_SIGMA ${ND_SIGMA}
+#cmakedefine ECCENTRICITY ${ECCENTRICITY}
+#cmakedefine MINKOWSKI_P ${MINKOWSKI_P}
+
+#endif
