@@ -1,8 +1,7 @@
 #pragma once
-#include <assert.h>
-
 #include <unordered_map>
 #include <vector>
+#include <list>
 #include <configure.hpp>
 
 #include "hmm/location.hpp"
@@ -17,7 +16,7 @@ class LocationMap {
     int m, n;
     std::vector<std::vector<LocationPtr>> loc_map;
     std::unordered_map<int, std::pair<int, int>> loc_dict;
-    std::unordered_set<LocationPtr> loc_set;
+    std::list<LocationPtr> loc_set;
 
     Point left_down, right_up;
     Point::value_type x_step, y_step;
@@ -26,11 +25,11 @@ class LocationMap {
     Prob::value_type sigma;
 
     void __init() {
-        assert(m > 1 && m <= MAP_SIZE && n > 1 && n <= MAP_SIZE);
-        assert(right_up.x() > left_down.x() && right_up.y() > left_down.y());
+        if (!(m > 1 && m <= MAP_SIZE && n > 1 && n <= MAP_SIZE)) throw std::runtime_error("invalid argument");
+        if (!(right_up.x() > left_down.x() && right_up.y() > left_down.y())) throw std::runtime_error("invalid argument");
         x_step = (right_up.x() - left_down.x()) / m;
         y_step = (right_up.y() - left_down.y()) / n;
-        assert(1 - std::min(x_step, y_step) / std::max(x_step, y_step) < ECCENTRICITY);
+        if (!(1 - std::min(x_step, y_step) / std::max(x_step, y_step) < ECCENTRICITY)) throw std::runtime_error("invalid argument");
         x_ratio = 1.0 / x_step;
         y_ratio = 1.0 / y_step;
         sigma = ND_SIGMA * std::max(x_step, y_step);
@@ -75,11 +74,11 @@ class LocationMap {
     bool add_loc(Point const & point) {
         int i = (point.x() - left_down.x()) * x_ratio;
         int j = (point.y() - left_down.y()) * y_ratio;
-        assert(check(i, j));
+        if (!(check(i, j))) throw std::runtime_error("invalid argument");
         if (loc_map[i][j] == nullptr) {
             loc_map[i][j] = std::make_shared<Location>(loc_dict.size(), point.x(), point.y());
             loc_dict[loc_map[i][j]->id] = std::make_pair(i, j);
-            loc_set.emplace(loc_map[i][j]);
+            loc_set.emplace_back(loc_map[i][j]);
             return true;
         } else {
             return false;
@@ -87,12 +86,12 @@ class LocationMap {
     }
 
     bool add_loc(int i, int j) {
-        assert(check(i, j));
+        if (!(check(i, j))) throw std::runtime_error("invalid argument");
         if (loc_map[i][j] == nullptr) {
             loc_map[i][j] = std::make_shared<Location>(loc_dict.size(), left_down.x() + i * x_step,
                                                        left_down.y() + j * y_step);
             loc_dict[loc_map[i][j]->id] = std::make_pair(i, j);
-            loc_set.emplace(loc_map[i][j]);
+            loc_set.emplace_back(loc_map[i][j]);
             return true;
         } else {
             return false;
@@ -100,13 +99,13 @@ class LocationMap {
     }
 
     void add_loc(LocationPtr loc) {
-        assert(loc != nullptr);
+        if (!(loc != nullptr)) throw std::runtime_error("invalid argument");
         int x = static_cast<int>((loc->point.x() - left_down.x()) * x_ratio);
         int y = static_cast<int>((loc->point.y() - left_down.y()) * y_ratio);
-        assert(check(x, y));
+        if (!(check(x, y))) throw std::runtime_error("invalid argument");
         loc_map[x][y] = loc;
         loc_dict.emplace(loc->id, std::make_pair(x, y));
-        loc_set.emplace(loc);
+        loc_set.emplace_back(loc);
     }
 
     auto& get_loc_dict() const { return loc_dict; }
@@ -114,7 +113,7 @@ class LocationMap {
     auto& get_loc_set() const { return loc_set; }
 
     auto& get_loc_idx(LocationPtr loc) const {
-        assert(check(loc));
+        if (!(check(loc))) throw std::runtime_error("invalid argument");
         return loc_dict.at(loc->id);
     }
 
@@ -122,7 +121,7 @@ class LocationMap {
         return loc_map.at(i).at(j);
     }
 
-    auto get_loc(int id) const {
+    auto& get_loc(int id) const {
         auto [i, j] = loc_dict.at(id);
         return loc_map[i][j];
     }

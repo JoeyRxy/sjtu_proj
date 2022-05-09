@@ -17,37 +17,12 @@ struct ParseError : std::exception {
 
 struct Info {
     bool g5;
-    int rsrp = -140;
+    double rsrp = -140;
     Info() : g5(false) {}
-    Info(int rsrp) : rsrp(rsrp) {}
+    Info(double rsrp) : rsrp(rsrp) {}
     Info(bool g5) : g5(g5) {}
     virtual ~Info() {}
 };
-
-// struct InfoLte : public Info {
-//     int rsrp = -140; // reference signal received power
-//     int rssi = INT_MIN; // Received Signal Strength Indication
-//     int rsrq = INT_MIN; // reference signal received quality
-//     int rssnr = INT_MIN; //  reference signal signal-to-noise ratio
-//     InfoLte() = default;
-//     InfoLte(int rsrp, int rssi, int rsrq, int rssnr) :
-//         rssi(rssi), rsrq(rsrq), rssnr(rssnr) {}
-// };
-
-// struct InfoNr : public Info {
-//     int ssrsrp = -140; // SsRsrp
-//     int csicqi = INT_MIN; // CsiCqi = getCsiCqiReport().get(getCsiCqiTableIndex())
-//     int csirsrp = INT_MIN; // CsiRsrp
-//     int csirsrq = INT_MIN; // CsiRsrq
-//     int csisinr = INT_MIN; // CsiSinr
-//     int ssrsrq = INT_MIN; // SsRsrq
-//     int sssinr = INT_MIN; // SsSinr
-//     InfoNr() : Info(true) {}
-//     InfoNr(int csicqi, int csirsrp, int csirsrq, int csisinr, int ssrsrp, int ssrsrq, int sssinr)
-//     :
-//         Info(true), csicqi(csicqi), csirsrp(csirsrp), csirsrq(csirsrq),
-//         csisinr(csisinr), ssrsrp(ssrsrp), ssrsrq(ssrsrq), sssinr(sssinr) {}
-// };
 
 struct CellInfo {
     int loc;
@@ -55,7 +30,7 @@ struct CellInfo {
     CellInfo() : loc(-1) {}
     ~CellInfo() {
         for (auto& p : pci_info_list) {
-            delete p.second;
+            if (p.second) delete p.second;
         }
     }
 };

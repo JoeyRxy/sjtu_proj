@@ -11,6 +11,7 @@ using TokenPtr = std::shared_ptr<Token>;
 struct Token {
     int len;
     std::string str;
+    Token() = default;
     Token(std::string&& str) : str(std::move(str)), len(str.size()) {}
     Token(std::string&& str, int len) : str(std::move(str)), len(len) {}
     virtual ~Token() = default;
@@ -20,7 +21,12 @@ struct Token {
 
 struct Number : public Token {
     int value;
-    Number(std::string&& str, int value) : Token(std::move(str)), value(value) {}
+    Number(int value, int len) : value(value) {this->len = len;}
+};
+
+struct Float : public Token {
+    double value;
+    Float(double value, int len) : value(value) {this->len = len;}
 };
 
 struct LexError : public std::exception {
@@ -41,7 +47,7 @@ class Lexer {
 
     bool is_digit(char c) { return c >= '0' && c <= '9'; }
 
-    int next_number();
+    double next_number();
 
    public:
     Lexer(std::istream& in) : in(in), _line(1), _col(1) {}

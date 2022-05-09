@@ -15,7 +15,7 @@ TokenPtr
     Token::G5 = std::make_shared<Token>("5G"), 
     Token::ENDL = std::make_shared<Token>("END of LINE", 1);
 
-int Lexer::next_number() {
+double Lexer::next_number() {
     int x = 0;
     while (in.good() && is_digit(in.peek())) {
         x *= 10;
@@ -23,7 +23,20 @@ int Lexer::next_number() {
         ++_col;
         in.get();
     }
-    return x;
+    if (in.good() && in.peek() == '.') {
+        ++_col;
+        in.get();
+        double fraction = 0.;
+        while (in.good() && is_digit(in.peek())) {
+            fraction += (in.peek() - '0');
+            fraction /= 10.;
+            ++_col;
+            in.get();
+        }
+        return x + fraction;
+    } else {
+        return x;
+    }
 }
 
 void Lexer::next() {
@@ -49,16 +62,30 @@ void Lexer::next() {
             _col += 2;
         } else {
             in.putback(ch);
-            int x = next_number();
-            token = std::make_shared<Number>(std::to_string(x), x);
+            int pos = _col;
+            double x = next_number();
+            if (x == (int)x) {
+                token = std::make_shared<Number>(x, _col - pos);
+            } else {
+                token = std::make_shared<Float>(x, _col - pos);
+            }
         }
         return;
     }
     if (in.peek() == '-') {
+        int pos = _col;
         ++_col;
         in.get();
-        int x = -next_number();
-        token = std::make_shared<Number>(std::to_string(x), x);
+        while (in.good() && in.peek() == ' ') {
+            ++_col;
+            in.get();
+        }
+        double x = next_number();
+        if (x == (int)x) {
+            token = std::make_shared<Number>(-x, _col - pos);
+        } else {
+            token = std::make_shared<Float>(-x, _col - pos);
+        }
         return;
     }
     char c;

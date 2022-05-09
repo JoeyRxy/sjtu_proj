@@ -15,10 +15,13 @@ public:
     BarrierLoc(int id, Point const & p) : Location(id, p) {}
 
     void add_blocked_angle(double start, double end) {
-        assert(start < end);
-        assert(start >= 0 && start < 2 * std::numbers::pi);
-        assert(end >= 0 && end < 2 * std::numbers::pi);
-        // blocked_angles_.emplace(start, end);
+        if (!(start < end)) throw std::runtime_error("invalid argument");
+        if (!(start >= 0 && start < 2 * std::numbers::pi)) throw std::runtime_error("invalid argument");
+        if (!(end >= 0 && end < 2 * std::numbers::pi)) throw std::runtime_error("invalid argument");
+        if (blocked_angles_.empty()) {
+            blocked_angles_.emplace(start, end);
+            return;
+        }
         auto start_it = blocked_angles_.upper_bound(start);
         if (start_it == blocked_angles_.end()) {
             --start_it;
@@ -50,7 +53,10 @@ public:
     }
 
     bool is_blocked(double angle) const {
-        assert(angle >= 0 && angle < 2 * std::numbers::pi);
+        if (!(angle >= 0 && angle <= 2 * std::numbers::pi)) throw std::runtime_error("invalid argument");
+        if (blocked_angles_.empty()) {
+            return false;
+        }
         auto it = blocked_angles_.upper_bound(angle);
         if (it == blocked_angles_.begin()) {
             return false;

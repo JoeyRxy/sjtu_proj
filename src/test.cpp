@@ -16,36 +16,10 @@
 using namespace std;
 using namespace rxy;
 
-int test_knn() {
-    string file = "../data/cellinfo-campus_040312.txt";
-    // string file = "../data/cellinfo-real.txt";
-    std::unordered_map<int, std::list<std::vector<rsrp_t>>> loc_data_aligned;
-    vector<int> pci_order = {908, 923, 936, 663, 100, 906, 457, 665, 223, 922, 748, 238};
-    // vector<int> pci_order = {902, 324, 933, 934, 63, 807, 326, 143, 92, 365, 226, 662, 31, 942, 138, 140, 901, 325, 948, 945, 946, 364};
-    sort(pci_order.begin(), pci_order.end());
-    if (load_data_aligned(file, loc_data_aligned, pci_order)) {
-        cout << "load data success" << endl;
-    } else {
-        cout << "load data failed" << endl;
-        return -1;
-    }
-    auto [X_train, y_train, X_test, y_test] = get_train_test_data(move(loc_data_aligned), 0.8);
-    KNN<rsrp_t> knn(10, KNN<rsrp_t>::distance_inv_weighted_euc);
-    knn.train(X_train, y_train);
-    int cnt = 0;
-    for (int i = 0; i < X_test.size(); ++i) {
-        int pred = knn.predict(X_test[i]);
-        if (pred == y_test[i]) ++cnt;
-        else cout << "pred: " << pred << "\ty: " << y_test[i] << endl;
-    }
-    cout << "accuracy: " << cnt * 1.0 / X_test.size() << endl;
-    return 0;
-}
-
 LocationMap load_loc_map();
 
 void test_map() {
-    string file = "../data/cellinfo-campus_040312.txt";
+    string file = "../data/train.txt";
     auto loc_map = load_loc_map();
     unordered_map<int, unordered_map<int, list<rsrp_t>>> loc_pci_map;
     if (load_data(file, loc_pci_map)) {
@@ -54,17 +28,17 @@ void test_map() {
         cerr << "load data failed" << endl;
     }
     MaxAPosteri __map(loc_map, loc_pci_map);
-    for (auto [loc, pci_rsrp_list] : loc_pci_map) {
+    for (auto&& [loc, pci_rsrp_list] : loc_pci_map) {
         list<pair<int, rsrp_t>> rsrp_list;
-        for (auto [pci, rsrps] : pci_rsrp_list) {
-            for (auto rsrp : rsrps) {
+        for (auto&& [pci, rsrps] : pci_rsrp_list) {
+            for (auto&& rsrp : rsrps) {
                 rsrp_list.emplace_back(pci, rsrp);
             }
         }
         auto loc_prob_map = __map(rsrp_list);
         LocationPtr max_loc = nullptr;
         Prob max_prob;
-        for (auto [loc, prob] : loc_prob_map) {
+        for (auto&& [loc, prob] : loc_prob_map) {
             if (prob >= max_prob) {
                 max_loc = loc;
                 max_prob = prob;

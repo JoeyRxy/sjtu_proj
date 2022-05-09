@@ -16,9 +16,9 @@ class MaxAPosteri {
     MaxAPosteri(
         LocationMap const& loc_map,
         std::unordered_map<int, std::unordered_map<int, std::list<rsrp_t>>> const& loc_pci_map) {
-        for (auto [loc, pci_rsrp_map] : loc_pci_map) {
+        for (auto&& [loc, pci_rsrp_map] : loc_pci_map) {
             auto& pci_stats = loc_pci_stats[loc_map.get_loc(loc)];
-            for (auto [pci, rsrp_list] : pci_rsrp_map) {
+            for (auto&& [pci, rsrp_list] : pci_rsrp_map) {
                 pci_stats[pci] = get_mean_var(rsrp_list.begin(), rsrp_list.end(), rsrp_list.size());
             }
         }
@@ -32,7 +32,7 @@ class MaxAPosteri {
         std::unordered_map<LocationPtr, Prob> loc_prob;
         for (auto const& [loc, pci_rsrp_map] : loc_pci_stats) {
             Prob p(0, true);
-            for (auto [pci, rsrp] : X) {
+            for (auto&& [pci, rsrp] : X) {
                 try {
                     auto [mu, sigma] = pci_rsrp_map.at(pci);
                     p *= log_nd_pdf(rsrp, mu, sigma);

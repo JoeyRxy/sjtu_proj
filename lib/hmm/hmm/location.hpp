@@ -3,6 +3,7 @@
 #include <configure.hpp>
 #include <functional>
 #include <memory>
+#include <numbers>
 #include <iostream>
 
 namespace rxy {
@@ -54,7 +55,7 @@ public:
     value_type r() {
         if (!computed_) {
             r_ = std::sqrt(x_ * x_ + y_ * y_);
-            phi_ = std::atan2(y_, x_);
+            phi_ = std::atan2(y_, x_) + std::numbers::pi;
             computed_ = true;
         }
         return r_;
@@ -63,7 +64,7 @@ public:
     value_type phi() {
         if (!computed_) {
             r_ = std::sqrt(x_ * x_ + y_ * y_);
-            phi_ = std::atan2(y_, x_);
+            phi_ = std::atan2(y_, x_) + std::numbers::pi;
             computed_ = true;
         }
         return phi_;
@@ -88,7 +89,7 @@ inline constexpr Point operator-(Point const& lhs, Point const& rhs) {
 inline constexpr Point::value_type minkowski(Point const& lhs, Point const& rhs, int p = 2) {
     if (p == 1) return std::abs(lhs.x() - rhs.x()) + std::abs(lhs.y() - rhs.y());
     if (p == 2) return sqrt(pow(lhs.x() - rhs.x(), 2) + pow(lhs.y() - rhs.y(), 2));
-    return std::sqrt(std::pow(std::abs(lhs.x() - rhs.x()), p) + std::pow(std::abs(lhs.y() - rhs.y()), p));
+    return std::pow(std::pow(std::abs(lhs.x() - rhs.x()), p) + std::pow(std::abs(lhs.y() - rhs.y()), p), 1. / p);
 }
 
 inline std::ostream& operator<<(std::ostream& os, Point const& p) {
@@ -105,15 +106,6 @@ struct Location {
     constexpr Location(int id, Point&& point) : id(id), point(std::move(point)) {}
     virtual ~Location() = default;
 };
-
-inline constexpr Point::value_type distance(Location const& lhs, Location const& rhs, int p = 2) {
-    return minkowski(lhs.point, rhs.point, p);
-}
-
-inline Point::value_type distance(LocationPtr lhs, LocationPtr rhs, int p = 2) {
-    if (lhs == nullptr || rhs == nullptr) return -1;
-    return minkowski(lhs->point, rhs->point, p);
-}
 
 inline constexpr bool operator==(Location const& lhs, Location const& rhs) {
     return lhs.id == rhs.id;

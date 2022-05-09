@@ -1,5 +1,4 @@
 #pragma once
-#include <assert.h>
 
 #include <configure.hpp>
 #include <list>
@@ -36,7 +35,7 @@ inline bool load_data(
     if (parser.parse()) {  // parse()进行解析；返回一个bool值表示是否解析成功
         for (auto const& cellinfo : parser.get()) {  // parser.get() 获取所有的CellInfo
             auto& pci_rsrp_map = loc_pci_map[cellinfo.loc];
-            for (auto [pci, rsrp] : cellinfo.pci_info_list) {
+            for (auto&& [pci, rsrp] : cellinfo.pci_info_list) {
                 pci_rsrp_map[pci].push_back(rsrp->rsrp);
             }
         }
@@ -60,7 +59,7 @@ inline bool load_data(
  * */
 inline bool load_data_aligned(
     std::string const& file,
-    std::unordered_map<int, std::list<std::vector<rsrp_t>>>& loc_data_aligned,
+    std::list<std::pair<int, std::vector<rsrp_t>>>& loc_data_aligned,
     std::vector<int> const& pci_order, rsrp_t default_rsrp = -140) {
     std::ifstream in(file);
     if (in.fail()) {
@@ -75,11 +74,16 @@ inline bool load_data_aligned(
     Parser parser(in);  // 构造时传入需要进行解析的文本
     if (parser.parse()) {
         for (auto const& cellinfo : parser.get()) {
-            auto& rsrp_aligned =
-                loc_data_aligned[cellinfo.loc].emplace_back(pci_order.size(), default_rsrp);
-            for (auto [pci, rsrp] : cellinfo.pci_info_list) {
-                rsrp_aligned[idx_map[pci]] = rsrp->rsrp;
+            // auto& rsrp_aligned =
+            //     loc_data_aligned[cellinfo.loc].emplace_back(pci_order.size(), default_rsrp);
+            std::vector<rsrp_t> rsrp_aligned(pci_order.size(), default_rsrp);
+            for (auto&& [pci, rsrp] : cellinfo.pci_info_list) {
+                try {
+                    rsrp_aligned[idx_map.at(pci)] = rsrp->rsrp;
+                } catch (std::out_of_range&) {
+                }
             }
+            loc_data_aligned.emplace_back(cellinfo.loc, std::move(rsrp_aligned));
         }
     } else {
         in.close();
@@ -91,7 +95,7 @@ inline bool load_data_aligned(
 
 namespace detail {
 
-inline void __get_train_test_data_helper(std::vector<std::pair<std::vector<rsrp_t>, int>>&& X,
+inline void __get_train_test_data_helper(std::vector<std::pair<int, std::vector<rsrp_t>>>&& X,
                                   std::vector<std::vector<rsrp_t>>& X_train,
                                   std::vector<int>& y_train,
                                   std::vector<std::vector<rsrp_t>>& X_test,
@@ -105,30 +109,24 @@ inline void __get_train_test_data_helper(std::vector<std::pair<std::vector<rsrp_
     X_test.reserve(X.size() - split_idx);
     y_test.reserve(X.size() - split_idx);
     for (std::size_t i = 0; i < split_idx; ++i) {
-        X_train.emplace_back(std::move(X[i].first));
-        y_train.emplace_back(X[i].second);
+        X_train.emplace_back(std::move(X[i].second));
+        y_train.emplace_back(X[i].first);
     }
     for (std::size_t i = split_idx; i < X.size(); ++i) {
-        X_test.emplace_back(std::move(X[i].first));
-        y_test.emplace_back(X[i].second);
+        X_test.emplace_back(std::move(X[i].second));
+        y_test.emplace_back(X[i].first);
     }
 }
 
 }  // namespace detail
 
 inline auto get_train_test_data(
-    std::unordered_map<int, std::list<std::vector<rsrp_t>>> const& loc_data_aligned,
+    std::list<std::pair<int, std::vector<rsrp_t>>>const& loc_data_aligned,
     double _split_ratio = 0.8) {
-    std::size_t sz = 0;
-    for (auto [_, data] : loc_data_aligned) {
-        sz += data.size();
-    }
-    std::vector<std::pair<std::vector<rsrp_t>, int>> X;
-    X.reserve(sz);
-    for (auto [loc, data_aligned] : loc_data_aligned) {
-        for (auto const& data : data_aligned) {
-            X.emplace_back(data, loc);
-        }
+    std::vector<std::pair<int, std::vector<rsrp_t>>> X;
+    X.reserve(loc_data_aligned.size());
+    for (auto& p : loc_data_aligned) {
+        X.emplace_back(p);
     }
     std::vector<std::vector<rsrp_t>> X_train;
     std::vector<int> y_train;
@@ -141,18 +139,12 @@ inline auto get_train_test_data(
 }
 
 inline auto get_train_test_data(
-    std::unordered_map<int, std::list<std::vector<rsrp_t>>>&& loc_data_aligned,
+    std::list<std::pair<int, std::vector<rsrp_t>>>&& loc_data_aligned,
     double _split_ratio = 0.8) {
-    std::size_t sz = 0;
-    for (auto [_, data] : loc_data_aligned) {
-        sz += data.size();
-    }
-    std::vector<std::pair<std::vector<rsrp_t>, int>> X;
-    X.reserve(sz);
-    for (auto [loc, data_aligned] : loc_data_aligned) {
-        for (auto const& data : data_aligned) {
-            X.emplace_back(std::move(data), loc);
-        }
+    std::vector<std::pair<int, std::vector<rsrp_t>>> X;
+    X.reserve(loc_data_aligned.size());
+    for (auto& p : loc_data_aligned) {
+        X.emplace_back(std::move(p));
     }
     std::vector<std::vector<rsrp_t>> X_train;
     std::vector<int> y_train;
@@ -167,8 +159,8 @@ inline auto get_train_test_data(
 inline std::set<int> get_pci_set(
     std::unordered_map<int, std::unordered_map<int, std::list<rsrp_t>>> const& loc_pci_map) {
     std::set<int> pci_set;
-    for (auto [_, pci_rsrp_map] : loc_pci_map) {
-        for (auto [pci, _] : pci_rsrp_map) {
+    for (auto&& [_, pci_rsrp_map] : loc_pci_map) {
+        for (auto&& [pci, _] : pci_rsrp_map) {
             pci_set.insert(pci);
         }
     }
@@ -178,8 +170,8 @@ inline std::set<int> get_pci_set(
 inline std::map<int, int> get_pci_map(
     std::unordered_map<int, std::unordered_map<int, std::list<rsrp_t>>> const& loc_pci_map) {
     std::map<int, int> pci_map;
-    for (auto [_, pci_rsrp_map] : loc_pci_map) {
-        for (auto [pci, _] : pci_rsrp_map) {
+    for (auto&& [_, pci_rsrp_map] : loc_pci_map) {
+        for (auto&& [pci, _] : pci_rsrp_map) {
             pci_map[pci]++;
         }
     }
@@ -195,7 +187,7 @@ requires std::input_iterator<InputIterator> &&
 inline std::pair<double, double> get_mean_var(InputIterator begin, InputIterator end, int n = -1,
                                               bool compute_min = true) {
     if (n == -1) n = std::distance(begin, end);
-    assert(n > 0);
+    if (!(n > 0)) throw std::runtime_error("invalid argument");
     if (compute_min) {
         double sum = std::accumulate(begin, end, 0);
         double mean = sum / n;

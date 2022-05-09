@@ -17,8 +17,9 @@ void LocMarkov::__init() {
         }
         auto bloc = barrier_loc(loc);
         for (auto && dest : loc_map.get_loc_set()) {
-            auto angle = (dest->point - loc->point).phi();
-            if (bloc->is_blocked(angle)) {
+            Point d = dest->point - loc->point;
+            auto angle = d.phi();
+            if (d.r() > 0 && bloc->is_blocked(angle)) {
                 _tran_prob[loc].emplace(dest, zero);
             } else {
                 _tran_prob[loc].emplace(dest, __tran_prob(new_point, dest->point, MINKOWSKI_P));

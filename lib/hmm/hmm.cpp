@@ -1,7 +1,5 @@
 #include "hmm.hpp"
 
-#include <assert.h>
-
 namespace rxy {
 
 /**
@@ -22,10 +20,10 @@ std::vector<LocationPtr> const HMM::operator()(std::vector<MarkovPtr> const& mar
                                             std::vector<EmissionProb> const& emission_probs) const {
     // number of states (locations)
     int const N = loc_set->size();
-    assert(init_prob.size() == N);
+    if (!(init_prob.size() == N)) throw std::runtime_error("invalid argument");
     // T is the number of time steps
     int T = emission_probs.size();
-    assert(markovs.size() == T - 1);
+    if (!(markovs.size() == T - 1)) throw std::runtime_error("invalid argument");
     std::unordered_map<LocationPtr, Prob> prev, cur;
     std::vector<std::unordered_map<LocationPtr, LocationPtr>> psi(T - 1);
     // t = 0
