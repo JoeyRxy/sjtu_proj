@@ -9,6 +9,7 @@
 #include <Eigen/Dense>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
+#include "sjtu/interp.hpp"
 
 #include <gsl/gsl_interp2d.h>
 #include <gsl/gsl_spline2d.h>
@@ -86,7 +87,7 @@ void test_interpolate() {
 
 void test_interpolate2d() {
     // prepare data
-    auto func = [](double x, double y) { return 100 * exp(-0.5 * (x * x + y * y)); };
+    auto func = [](double x, double y) { return 100. * sin(x) * cos(y); };
     double start = -2, end = 2, delta = 0.5;
     int N = (end - start) / delta;
     Eigen::VectorXd x(N), y(N);
@@ -144,4 +145,99 @@ void test_interpolate2d() {
     }
     cout << "avg diff: " << avg_diff / (N_x * N_y) << endl;
     cout << "max diff: " << max_diff << endl;
+}
+
+void test_interp_prob() {
+    // prepare data
+    unordered_map<Point, unordered_map<rsrp_t, Prob>> data;
+    // (0, 0)
+    auto & m1 = data[{0., 0.}];
+    m1[-100] = 0.5;
+    m1[-95] = 0.5;
+    // (0, 1)
+    auto & m2 = data[{0., 1.}];
+    m2[-56] = 0.5;
+    m2[-42] = 0.3;
+    m2[-34] = 0.2;
+    // (1, 0)
+    auto & m3 = data[{1., 0.}];
+    m3[-76] = 0.3;
+    m3[-65] = 0.3;
+    m3[-53] = 0.2;
+    m3[-45] = 0.2;
+    // (1, 1)
+    auto & m4 = data[{1., 1.}];
+    m4[-30] = 0.4;
+    m4[-25] = 0.2;
+    m4[-21] = 0.4;
+    // (-1, 0)
+    auto & m5 = data[{-1., 0.}];
+    m5[-77] = 0.3;
+    m5[-65] = 0.3;
+    m5[-58] = 0.2;
+    m5[-45] = 0.2;
+    // (-1, 1)
+    auto & m6 = data[{-1., 1.}];
+    m6[-107] = 0.4;
+    m6[-93] = 0.4;
+    m6[-90] = 0.2;
+    // (-1, -1)
+    auto & m7 = data[{-1., -1.}];
+    m7[-125] = 0.4;
+    m7[-115] = 0.3;
+    m7[-105] = 0.3;
+    // (1, -1)
+    auto & m8 = data[{1., -1.}];
+    m8[-110] = 0.2;
+    m8[-102] = 0.4;
+    m8[-93] = 0.4;
+    // (0, -1)
+    auto & m9 = data[{0., -1.}];
+    m9[-95] = 0.3;
+    m9[-87] = 0.5;
+    m9[-75] = 0.2;
+    
+    ProbInterp interp(data);
+    
+    unordered_map<Point, map<rsrp_t, Prob>> data_new;
+    auto & t1 = data_new[{0.5, 0.5}];
+    auto & t2 = data_new[{-0.5, 0.5}];
+    auto & t3 = data_new[{0.5, -0.5}];
+    auto & t4 = data_new[{-0.5, -0.5}];
+
+    interp(data_new);
+    
+    cout << "-------------- After interpolation --------------" << endl;
+    cout << "(0.5, 0.5): " << endl;
+    double sum = 0;
+    for (auto & [rsrp, prob] : t1) {
+        double p = std::exp(prob.prob);
+        cout << "\t" << rsrp << "\t" << p << endl;
+        sum += p;
+    }
+    cout << "sum: " << sum << endl;
+    cout << "(-0.5, 0.5): " << endl;
+    sum = 0;
+    for (auto & [rsrp, prob] : t2) {
+        double p = std::exp(prob.prob);
+        cout << "\t" << rsrp << "\t" << p << endl;
+        sum += p;
+    }
+    cout << "sum: " << sum << endl;
+    cout << "(0.5, -0.5): " << endl;
+    sum = 0;
+    for (auto & [rsrp, prob] : t3) {
+        double p = std::exp(prob.prob);
+        cout << "\t" << rsrp << "\t" << p << endl;
+        sum += p;
+    }
+    cout << "sum: " << sum << endl;
+    cout << "(-0.5, -0.5): " << endl;
+    sum = 0;
+    for (auto & [rsrp, prob] : t4) {
+        double p = std::exp(prob.prob);
+        cout << "\t" << rsrp << "\t" << p << endl;
+        sum += p;
+    }
+    cout << "sum: " << sum << endl;
 }

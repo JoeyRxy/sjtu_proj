@@ -10,11 +10,14 @@
 #include "sjtu/location_map.hpp"
 #include "sjtu/max_a_posteri.hpp"
 #include "sjtu/util.hpp"
+#include "test_reg.hpp"
 
 void test_map();
 void test_interpolate();
 void test_eigen();
 void test_interpolate2d();
+
+void test_interp_prob();
 
 using namespace std;
 using namespace rxy;
@@ -32,6 +35,7 @@ enum Code {
     BG_BLUE = 44,
     BG_DEFAULT = 49
 };
+
 class Modifier {
     Code code;
 
@@ -75,7 +79,7 @@ auto load_loc_map() {
     int id = 1;
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 6; j++, ++id) {
-            loc_map.add_loc(make_shared<BarrierLoc>(id, Point{i * step, j * step}));
+            loc_map.add_loc(make_shared<BarrierLoc>(id, Point{static_cast<Point::value_type>(i * step), static_cast<Point::value_type>(j * step)}));
         }
     }
     return loc_map;
@@ -83,7 +87,8 @@ auto load_loc_map() {
 
 unordered_map<LocationPtr, int> get_number_for_loc(
     unordered_map<int, unordered_map<int, list<rsrp_t>>> const& loc_pci_map,
-    LocationMap const& loc_map, int& S) {
+    LocationMap const& loc_map, int& S
+    ) {
     unordered_map<LocationPtr, int> cnt_map;
     S = 0;
     for (auto&& [loc, pci_rsrp_map] : loc_pci_map) {
@@ -97,35 +102,36 @@ unordered_map<LocationPtr, int> get_number_for_loc(
 }
 
 auto get_markov(LocationMap const& loc_map) {
-    vector<Sensation> sensations;
-    sensations.emplace_back(upward);     // 8
-    sensations.emplace_back(upward);     // 8
-    sensations.emplace_back(upward);     // 8
-    sensations.emplace_back(upward);     // 9
-    sensations.emplace_back(upward);     // 9
-    sensations.emplace_back(upward);     // 9
-    sensations.emplace_back(upward);     // 10
-    sensations.emplace_back(upward);     // 10
-    sensations.emplace_back(upward);     // 11
-    sensations.emplace_back(upward);     // 11
-    sensations.emplace_back(upward);     // 12
-    sensations.emplace_back(upward);     // 12
-    sensations.emplace_back(rightward);  // 12
-    sensations.emplace_back(rightward);  // 18
-    sensations.emplace_back(rightward);  // 18
-    sensations.emplace_back(rightward);  // 18
-    sensations.emplace_back(rightward);  // 24
-    sensations.emplace_back(rightward);  // 24
-    sensations.emplace_back(downward);   // 24
-    sensations.emplace_back(downward);   // 23
-    sensations.emplace_back(downward);   // 23
-    sensations.emplace_back(downward);   // 23
-    sensations.emplace_back(downward);   // 22
-    sensations.emplace_back(downward);   // 22
-    sensations.emplace_back(downward);   // 21
-    sensations.emplace_back(downward);   // 21
-    sensations.emplace_back(downward);   // 20
-    sensations.emplace_back(downward);   // 20
+    vector<Sensation> sensations{
+        upward,     // 8
+        upward,     // 8
+        upward,     // 8
+        upward,     // 9
+        upward,     // 9
+        upward,     // 9
+        upward,     // 10
+        upward,     // 10
+        upward,     // 11
+        upward,     // 11
+        upward,     // 12
+        upward,     // 12
+        rightward,  // 12
+        rightward,  // 18
+        rightward,  // 18
+        rightward,  // 18
+        rightward,  // 24
+        rightward,  // 24
+        downward,   // 24
+        downward,   // 23
+        downward,   // 23
+        downward,   // 23
+        downward,   // 22
+        downward,   // 22
+        downward,   // 21
+        downward,   // 21
+        downward,   // 20
+        downward   // 20
+    };
     // sensations.emplace_back(stop);      // 20
     vector<MarkovPtr> markovs;
     markovs.reserve(sensations.size());
@@ -198,7 +204,7 @@ void get_emission_prob_using_knn(
     }
 }
 
-int test_knn() {
+TEST(knn) {
     cout << __color::bg_blu() << "--- knn ---" << __color::bg_def() << endl;
     // string file = "../data/cellinfo-campus_040312.txt";
     string file = "../data/train.txt";
@@ -213,7 +219,7 @@ int test_knn() {
         cout << "load data success" << endl;
     } else {
         cout << "load data failed" << endl;
-        return -1;
+        return;
     }
     auto train_data = get_train_test_data(move(loc_data_aligned), 0.8);
     auto& X_train = get<0>(train_data);
@@ -228,7 +234,7 @@ int test_knn() {
         cout << "load test data success" << endl;
     } else {
         cout << "load test data failed" << endl;
-        return -1;
+        return;
     }
     KNN<rsrp_t> knn(40, KNN<rsrp_t>::distance_inv_weighted_euc);
     knn.train(X_train, y_train);
@@ -261,10 +267,9 @@ int test_knn() {
         }
     }
     cout << "accuracy: " << static_cast<double>(cnt) / total << endl;
-    return 0;
 }
 
-int procedure() {
+TEST(procedure) {
     cout << __color::bg_blu() << "--- procedure ---" << __color::bg_def() << endl;
     vector<int> pci_order = {117, 118, 314, 331, 997, 998};
     string file = "../data/train.txt";
@@ -302,7 +307,6 @@ int procedure() {
         }
     }
     cout << "accuracy = " << (double)cnt / T << endl;
-    return 0;
 }
 
 int main(int argc, char const* argv[]) {
@@ -316,8 +320,10 @@ int main(int argc, char const* argv[]) {
     //     }
     //     cout << endl;
     // }
-    test_knn();
+    // test_knn();
     // test_map();
-    procedure();
+    // procedure();
+    // test_interp_prob();
+    TEST_ALL;
     return 0;
 }

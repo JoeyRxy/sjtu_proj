@@ -27,11 +27,26 @@ struct Prob {
         return *this;
     }
 
+    constexpr Prob& operator+=(Prob const &rhs) {
+        if (this->prob == -std::numeric_limits<value_type>::infinity()) {
+            this->prob = rhs.prob;
+        } else if (rhs.prob != -std::numeric_limits<value_type>::infinity()) {
+            this->prob = std::log1p(std::exp(this->prob) + std::exp(rhs.prob) - 1);
+        }
+        return *this;
+    }
+
 };
 
 inline constexpr Prob operator*(Prob const &lhs, Prob const &rhs) { return Prob(lhs.prob + rhs.prob, true); }
 
 inline constexpr Prob operator/(Prob const &lhs, Prob const &rhs) { return Prob(lhs.prob - rhs.prob, true); }
+
+inline constexpr Prob operator+(Prob const &lhs, Prob const &rhs) { 
+    Prob ret(lhs);
+    ret += rhs;
+    return ret; 
+}
 
 /**
  * overload all logic operators for Prob

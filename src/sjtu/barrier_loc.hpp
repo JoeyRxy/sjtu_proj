@@ -18,37 +18,51 @@ public:
         if (!(start < end)) throw std::runtime_error("invalid argument");
         if (!(start >= 0 && start < 2 * std::numbers::pi)) throw std::runtime_error("invalid argument");
         if (!(end >= 0 && end < 2 * std::numbers::pi)) throw std::runtime_error("invalid argument");
-        if (blocked_angles_.empty()) {
-            blocked_angles_.emplace(start, end);
-            return;
+        if (!blocked_angles_.empty()) {
+            auto lit = blocked_angles_.lower_bound(start);
+            auto it = lit;
+            bool is_first = true;
+            if (lit != blocked_angles_.begin()) {
+                is_first = false;
+                --lit;
+            }
+            double second = -std::numeric_limits<double>::infinity();
+            while (it != blocked_angles_.end() && it->first <= end) {
+                second = it->second;
+                it = blocked_angles_.erase(it);
+            }
+            end = max(end, second);
+            if (!is_first) {
+                if (lit->second >= start) {
+                    lit->second = max(end, lit->second);
+                    return;
+                }
+            }
         }
-        auto start_it = blocked_angles_.upper_bound(start);
-        if (start_it == blocked_angles_.end()) {
-            --start_it;
-            if (start_it->second >= start) {
-                start_it->second = std::max(start_it->second, end);
-            } else {
-                blocked_angles_.emplace_hint(blocked_angles_.end(), start, end);
+        blocked_angles_[start] = end;
+    }
+
+    void remove_blocked_angle(double left, double right) {
+        if (!(left < right)) throw std::runtime_error("invalid argument");
+        if (!(left >= 0 && left < 2 * std::numbers::pi)) throw std::runtime_error("invalid argument");
+        if (!(right >= 0 && right < 2 * std::numbers::pi)) throw std::runtime_error("invalid argument");
+        if (blocked_angles_.empty()) return;
+        auto lit = blocked_angles_.lower_bound(left);
+        auto it = lit;
+        double second = -std::numeric_limits<double>::infinity();
+        if (lit != blocked_angles_.begin()) {
+            --lit;
+            if (lit->second > left) {
+                second = lit->second;
+                lit->second = left;
             }
-        } else if (start_it == blocked_angles_.begin()) {
-            auto end_it = blocked_angles_.upper_bound(end);
-            if (end_it == blocked_angles_.begin()) {
-                blocked_angles_.emplace_hint(blocked_angles_.begin(), start, end);
-            } else {
-                end = std::max(end, prev(end_it)->second);
-                blocked_angles_.erase(start_it, end_it);
-                blocked_angles_.emplace_hint(blocked_angles_.begin(), start, end);
-            }
-        } else {
-            auto end_it = blocked_angles_.upper_bound(end);
-            end = std::max(end, prev(start_it)->second);
-            blocked_angles_.erase(start_it, end_it);
-            --start_it;
-            if (start_it->second >= start) {
-                start_it->second = end;
-            } else {
-                blocked_angles_.emplace_hint(++start_it, start, end);
-            }
+        }
+        while (it != blocked_angles_.end() && it->first < right) {
+            second = it->second;
+            it = blocked_angles_.erase(it);
+        }
+        if (second > right) {
+            blocked_angles_[right] = second;
         }
     }
 

@@ -9,5 +9,6 @@
 #cmakedefine ND_SIGMA ${ND_SIGMA}
 #cmakedefine ECCENTRICITY ${ECCENTRICITY}
 #cmakedefine MINKOWSKI_P ${MINKOWSKI_P}
+#cmakedefine ENUMER_LIMIT ${ENUMER_LIMIT}
 
 #endif
