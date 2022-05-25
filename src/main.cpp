@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <iostream>
 
+#include "test_reg.hpp"
+
 #include "hmm/hmm.hpp"
 #include "hmm/knn.hpp"
 #include "sjtu/barrier_loc.hpp"
@@ -10,7 +12,7 @@
 #include "sjtu/location_map.hpp"
 #include "sjtu/max_a_posteri.hpp"
 #include "sjtu/util.hpp"
-#include "test_reg.hpp"
+#include "sjtu/interp.hpp"
 
 void test_map();
 void test_interpolate();
@@ -204,109 +206,180 @@ void get_emission_prob_using_knn(
     }
 }
 
-TEST(knn) {
-    cout << __color::bg_blu() << "--- knn ---" << __color::bg_def() << endl;
-    // string file = "../data/cellinfo-campus_040312.txt";
-    string file = "../data/train.txt";
-    // string file = "../data/cellinfo-real.txt";
-    std::list<std::pair<int, std::vector<rsrp_t>>> loc_data_aligned;
-    // vector<int> pci_order = {908, 923, 936, 663, 100, 906, 457, 665, 223, 922, 748, 238};
-    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
-    // vector<int> pci_order = {902, 324, 933, 934, 63, 807, 326, 143, 92, 365, 226, 662, 31, 942,
-    // 138, 140, 901, 325, 948, 945, 946, 364};
-    sort(pci_order.begin(), pci_order.end());
-    if (load_data_aligned(file, loc_data_aligned, pci_order)) {
-        cout << "load data success" << endl;
-    } else {
-        cout << "load data failed" << endl;
-        return;
-    }
-    auto train_data = get_train_test_data(move(loc_data_aligned), 0.8);
-    auto& X_train = get<0>(train_data);
-    auto& y_train = get<1>(train_data);
-    auto& X_test = get<2>(train_data);
-    auto& y_test = get<3>(train_data);
-    cout << "train data size: " << X_train.size() << endl;
-    cout << "test data size: " << X_test.size() << endl;
-    string test_file = "../data/test.txt";
-    std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
-    if (load_data_aligned(test_file, test_data_aligned, pci_order)) {
-        cout << "load test data success" << endl;
-    } else {
-        cout << "load test data failed" << endl;
-        return;
-    }
-    KNN<rsrp_t> knn(40, KNN<rsrp_t>::distance_inv_weighted_euc);
-    knn.train(X_train, y_train);
-    int cnt = 0;
-    auto loc_map = load_loc_map();
-    auto tik = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < X_test.size(); ++i) {
-        if (knn.predict(X_test[i]) == y_test[i]) {
-            cnt++;
-        }
-    }
-    auto tok = std::chrono::high_resolution_clock::now();
-    cout << "accuracy: " << cnt * 1.0 / X_test.size() << "\n"
-         << __color::bg_blu()
-         << "duration: " << std::chrono::duration_cast<chrono::milliseconds>(tok - tik).count()
-         << " ms" << __color::bg_def() << endl;
-    int total = 0;
-    cnt = 0;
-    for (auto&& [loc, data] : test_data_aligned) {
-        total++;
-        cout << "t = " << total << endl;
-        int pred = knn.predict(data);
-        if (pred == loc) {
-            cout << __color::gre() << "\t" << loc_map.get_loc(loc)->point << __color::def() << endl;
-            ++cnt;
-        } else {
-            cout << "\t" << __color::gre() << loc_map.get_loc(loc)->point << __color::def()
-                 << " vs. " << __color::red() << loc_map.get_loc(pred)->point << __color::def()
-                 << ": " << minkowski(loc_map.get_loc(loc)->point, loc_map.get_loc(pred)->point) << endl;
-        }
-    }
-    cout << "accuracy: " << static_cast<double>(cnt) / total << endl;
-}
+// TEST(knn) {
+//     cout << __color::bg_blu() << "--- knn ---" << __color::bg_def() << endl;
+//     // string file = "../data/cellinfo-campus_040312.txt";
+//     string file = "../data/train.txt";
+//     // string file = "../data/cellinfo-real.txt";
+//     std::list<std::pair<int, std::vector<rsrp_t>>> loc_data_aligned;
+//     // vector<int> pci_order = {908, 923, 936, 663, 100, 906, 457, 665, 223, 922, 748, 238};
+//     vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+//     // vector<int> pci_order = {902, 324, 933, 934, 63, 807, 326, 143, 92, 365, 226, 662, 31, 942,
+//     // 138, 140, 901, 325, 948, 945, 946, 364};
+//     sort(pci_order.begin(), pci_order.end());
+//     if (load_data_aligned(file, loc_data_aligned, pci_order)) {
+//         cout << "load data success" << endl;
+//     } else {
+//         cout << "load data failed" << endl;
+//         return;
+//     }
+//     auto train_data = get_train_test_data(move(loc_data_aligned), 0.8);
+//     auto& X_train = get<0>(train_data);
+//     auto& y_train = get<1>(train_data);
+//     auto& X_test = get<2>(train_data);
+//     auto& y_test = get<3>(train_data);
+//     cout << "train data size: " << X_train.size() << endl;
+//     cout << "test data size: " << X_test.size() << endl;
+//     string test_file = "../data/test.txt";
+//     std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
+//     if (load_data_aligned(test_file, test_data_aligned, pci_order)) {
+//         cout << "load test data success" << endl;
+//     } else {
+//         cout << "load test data failed" << endl;
+//         return;
+//     }
+//     KNN<rsrp_t> knn(40, KNN<rsrp_t>::distance_inv_weighted_euc);
+//     knn.train(X_train, y_train);
+//     int cnt = 0;
+//     auto loc_map = load_loc_map();
+//     auto tik = std::chrono::high_resolution_clock::now();
+//     for (int i = 0; i < X_test.size(); ++i) {
+//         if (knn.predict(X_test[i]) == y_test[i]) {
+//             cnt++;
+//         }
+//     }
+//     auto tok = std::chrono::high_resolution_clock::now();
+//     cout << "accuracy: " << cnt * 1.0 / X_test.size() << "\n"
+//          << __color::bg_blu()
+//          << "duration: " << std::chrono::duration_cast<chrono::milliseconds>(tok - tik).count()
+//          << " ms" << __color::bg_def() << endl;
+//     int total = 0;
+//     cnt = 0;
+//     for (auto&& [loc, data] : test_data_aligned) {
+//         total++;
+//         cout << "t = " << total << endl;
+//         int pred = knn.predict(data);
+//         if (pred == loc) {
+//             cout << __color::gre() << "\t" << loc_map.get_loc(loc)->point << __color::def() << endl;
+//             ++cnt;
+//         } else {
+//             cout << "\t" << __color::gre() << loc_map.get_loc(loc)->point << __color::def()
+//                  << " vs. " << __color::red() << loc_map.get_loc(pred)->point << __color::def()
+//                  << ": " << minkowski(loc_map.get_loc(loc)->point, loc_map.get_loc(pred)->point) << endl;
+//         }
+//     }
+//     cout << "accuracy: " << static_cast<double>(cnt) / total << endl;
+// }
 
-TEST(procedure) {
-    cout << __color::bg_blu() << "--- procedure ---" << __color::bg_def() << endl;
-    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
-    string file = "../data/train.txt";
-    // ---- location map ----
+// TEST(procedure) {
+//     cout << __color::bg_blu() << "--- procedure ---" << __color::bg_def() << endl;
+//     vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+//     string file = "../data/train.txt";
+//     // ---- location map ----
+//     auto loc_map = load_loc_map();
+//     // ------ sensation & markov ------
+//     auto markovs = get_markov(loc_map);
+//     int T = markovs.size() + 1;
+//     auto knn = get_knn(file, pci_order);
+//     // ------ load data ------
+//     string test_file = "../data/test.txt";
+//     vector<EmissionProb> emission_probs;
+//     vector<LocationPtr> locations;
+//     std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
+//     load_data_aligned(test_file, test_data_aligned, pci_order);
+//     get_emission_prob_using_knn(test_data_aligned, knn, loc_map, emission_probs, locations, T);
+//     // ------ init prob -------
+//     unordered_map<LocationPtr, Prob> init_probs;
+//     for (auto&& loc : loc_map.get_loc_set()) {
+//         init_probs[loc] = emission_probs[0][loc];
+//         // init_probs[loc] = {0, true};
+//     }
+//     // ------ hmm ------
+//     auto pred_locs = HMM{loc_map.get_loc_set()}(markovs, init_probs, emission_probs);
+//     int cnt = 0;
+//     for (int t = 0; t < T; ++t) {
+//         cout << "t = " << (t + 1) << endl;
+//         if (locations[t]->id == pred_locs[t]->id) {
+//             ++cnt;
+//             cout << __color::gre() << "\t" << pred_locs[t]->point << __color::def() << endl;
+//         } else {
+//             cout << "\t" << __color::gre() << locations[t]->point << __color::def() << " vs. "
+//                  << __color::red() << pred_locs[t]->point << __color::def() << ": "
+//                  << minkowski(locations[t]->point, pred_locs[t]->point) << endl;
+//         }
+//     }
+//     cout << "accuracy = " << (double)cnt / T << endl;
+// }
+
+TEST(interpolation) {
     auto loc_map = load_loc_map();
-    // ------ sensation & markov ------
-    auto markovs = get_markov(loc_map);
-    int T = markovs.size() + 1;
-    auto knn = get_knn(file, pci_order);
-    // ------ load data ------
-    string test_file = "../data/test.txt";
-    vector<EmissionProb> emission_probs;
-    vector<LocationPtr> locations;
-    std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
-    load_data_aligned(test_file, test_data_aligned, pci_order);
-    get_emission_prob_using_knn(test_data_aligned, knn, loc_map, emission_probs, locations, T);
-    // ------ init prob -------
-    unordered_map<LocationPtr, Prob> init_probs;
-    for (auto&& loc : loc_map.get_loc_set()) {
-        init_probs[loc] = emission_probs[0][loc];
-        // init_probs[loc] = {0, true};
-    }
-    // ------ hmm ------
-    auto pred_locs = HMM{loc_map.get_loc_set()}(markovs, init_probs, emission_probs);
-    int cnt = 0;
-    for (int t = 0; t < T; ++t) {
-        cout << "t = " << (t + 1) << endl;
-        if (locations[t]->id == pred_locs[t]->id) {
-            ++cnt;
-            cout << __color::gre() << "\t" << pred_locs[t]->point << __color::def() << endl;
+    auto data_map = load_original_data("../data/train.txt");
+    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+    int pci = pci_order[0];
+    std::unordered_map<Point, std::unordered_map<rsrp_t, Prob>> samples;
+    vector<int> sm_set{1,2,3,4,7,8,9,10,13,14,15,16,19,20,21,22};
+    for (auto loc : sm_set) {
+        auto & rsrp_ls = data_map[loc][pci];
+        unordered_map<rsrp_t, int> cnt_map;
+        for (auto & rsrp : rsrp_ls) {
+            cnt_map[rsrp]++;
+        }
+        unordered_map<rsrp_t, Prob> prob_map;
+        prob_map.reserve(cnt_map.size());
+        if (cnt_map.size() > 3) {
+            vector<int> cnt_ls;
+            cnt_ls.reserve(cnt_map.size());
+            for (auto & [rsrp, cnt] : cnt_map) {
+                cnt_ls.emplace_back(cnt);
+            }
+            sort(cnt_ls.begin(), cnt_ls.end(), greater<int>());
+            while (cnt_ls.size() > 3) {
+                cnt_ls.pop_back();
+            }
+            int cnt3 = cnt_ls[2];
+            double S = accumulate(cnt_ls.begin(), cnt_ls.end(), 0);
+            for (auto & [rsrp, cnt] : cnt_map) {
+                if (cnt >= cnt3) {
+                    prob_map.emplace(rsrp, Prob(cnt / S));
+                }
+            }
         } else {
-            cout << "\t" << __color::gre() << locations[t]->point << __color::def() << " vs. "
-                 << __color::red() << pred_locs[t]->point << __color::def() << ": "
-                 << minkowski(locations[t]->point, pred_locs[t]->point) << endl;
+            double S = accumulate(cnt_map.begin(), cnt_map.end(), 0, [](int a, auto & b) {
+                return a + b.second;
+            });
+            for (auto & [rsrp, cnt] : cnt_map) {
+                prob_map.emplace(rsrp, Prob(cnt / S));
+            }
+        }
+        samples.emplace(loc_map.get_loc(loc)->point, std::move(prob_map));
+    }
+    ProbInterp interp(samples);
+    std::unordered_map<Point, std::map<rsrp_t, Prob>> points_to_interp;
+    points_to_interp.reserve(samples.size() * 2);
+    double x0 = 0, x1 = 15, y0 = 0, y1 = 15;
+    auto [x_step, y_step] = loc_map.step();
+    for (double x = x0 + x_step / 2; x < x1; x += x_step) {
+        for (double y = y0; y < y1; y += y_step) {
+            points_to_interp.emplace(Point{x, y}, std::map<rsrp_t, Prob>{});
         }
     }
-    cout << "accuracy = " << (double)cnt / T << endl;
+    for (double y = y0 + y_step / 2; y < y1; y += y_step) {
+        for (double x = x0; x < x1; x += x_step) {
+            points_to_interp.emplace(Point{x, y}, std::map<rsrp_t, Prob>{});
+        }
+    }
+    for (double x = x0 + x_step / 2; x < x1; x += x_step) {
+        for (double y = y0 + y_step / 2; y < y1; y += y_step) {
+            points_to_interp.emplace(Point{x, y}, std::map<rsrp_t, Prob>{});
+        }
+    }
+    interp(points_to_interp);
+    for (auto & [point, interp_map] : points_to_interp) {
+        cout << __color::bg_blu() << point << __color::bg_def() << endl;
+        for (auto & [rsrp, prob] : interp_map) {
+            cout << '\t' << rsrp << ": " << prob << endl;
+        }
+    }
 }
 
 int main(int argc, char const* argv[]) {

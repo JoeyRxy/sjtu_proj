@@ -31,10 +31,10 @@ public:
                 second = it->second;
                 it = blocked_angles_.erase(it);
             }
-            end = max(end, second);
+            end = std::max(end, second);
             if (!is_first) {
                 if (lit->second >= start) {
-                    lit->second = max(end, lit->second);
+                    lit->second = std::max(end, lit->second);
                     return;
                 }
             }

@@ -15,6 +15,7 @@ class LocationMap {
 
     int m, n;
     std::vector<std::vector<LocationPtr>> loc_map;
+    // loc_id -> (i, j)
     std::unordered_map<int, std::pair<int, int>> loc_dict;
     std::list<LocationPtr> loc_set;
 
@@ -145,6 +146,18 @@ class LocationMap {
 
     auto get_map_col_size() const {
         return n;
+    }
+
+    auto x_range() const {
+        return std::make_pair(left_down.x(), right_up.x());
+    }
+
+    auto y_range() const {
+        return std::make_pair(left_down.y(), right_up.y());
+    }
+
+    auto step() const {
+        return std::make_pair(x_step, y_step);
     }
 
 };

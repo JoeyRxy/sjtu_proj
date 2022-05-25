@@ -46,6 +46,7 @@ class ProbInterp {
         for (auto&& [loc, prob_map] : loc_prob_map) {
             x_map.emplace(loc.x(), 0);
             y_map.emplace(loc.y(), 0);
+            std::cout << prob_map.size() << std::endl;
             sz *= prob_map.size();
             if (sz == 0) {
                 std::ostringstream oss;
@@ -55,6 +56,7 @@ class ProbInterp {
                 throw std::runtime_error("prob map too large to compute cross product");
             }
         }
+        std::cout << "interp size: " << sz << std::endl;
         if (loc_prob_map.size() != x_map.size() * y_map.size()) {
             throw std::runtime_error("loc_prob_map size != x_map.size * y_map.size");
         }

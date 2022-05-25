@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <configure.hpp>
+#include <iostream>
 
 namespace rxy {
 
@@ -46,6 +47,11 @@ inline constexpr Prob operator+(Prob const &lhs, Prob const &rhs) {
     Prob ret(lhs);
     ret += rhs;
     return ret; 
+}
+
+inline std::ostream& operator<<(std::ostream& os, Prob const &prob) {
+    os << std::exp(prob.prob);
+    return os;
 }
 
 /**
