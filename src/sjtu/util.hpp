@@ -68,6 +68,7 @@ inline bool load_data_aligned(
         return false;
     }
     std::unordered_map<int, int> idx_map;
+    idx_map.reserve(pci_order.size());
     for (int i = 0; i < pci_order.size(); ++i) {
         idx_map[pci_order[i]] = i;
     }
@@ -205,6 +206,87 @@ inline std::pair<double, double> get_mean_var(InputIterator begin, InputIterator
         });
         double variance = sum / n;
         return {mean, variance};
+    }
+}
+
+inline auto load_test_sensor(std::string const& test_sensor_file) {
+    static Point North{0, 1}, South{0, -1}, East{1, 0}, West{-1, 0}, Stop{0, 0};
+    std::ifstream ifs(test_sensor_file);
+    if (!ifs) throw std::runtime_error("failed to open test_sensor_file");
+    std::list<Sensation> sensations;
+    char c;
+    while (ifs.get(c)) {
+        switch (c) {
+            case 'N':
+                sensations.emplace_back(North);
+                break;
+            case 'S':
+                sensations.emplace_back(South);
+                break;
+            case 'E':
+                sensations.emplace_back(East);
+                break;
+            case 'W':
+                sensations.emplace_back(West);
+                break;
+            case 'O':
+                sensations.emplace_back(Stop);
+                break;
+        }
+    }
+    ifs.close();
+    return sensations;
+}
+
+inline KNN<rsrp_t> get_knn(std::string const& file, std::vector<int> const& pci_order, int top_k = 300) {
+    std::list<std::pair<int, std::vector<rsrp_t>>> loc_data_aligned;
+    KNN<rsrp_t> knn(top_k, KNN<rsrp_t>::distance_inv_weighted_euc);
+    if (load_data_aligned(file, loc_data_aligned, pci_order)) {
+        std::cout << "load data success" << std::endl;
+        // auto data = get_train_test_data(loc_data_aligned, 1.);
+        std::vector<std::vector<rsrp_t>> data;
+        std::vector<int> labels;
+        data.reserve(loc_data_aligned.size());
+        labels.reserve(loc_data_aligned.size());
+        for (auto && [label, rsrp_vector] : loc_data_aligned) {
+            data.emplace_back(std::move(rsrp_vector));
+            labels.emplace_back(label);
+        }
+        knn.train(std::move(data), std::move(labels));
+        return knn;
+    } else {
+        throw std::runtime_error("load data failed");
+    }
+}
+
+inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_map) {
+    auto sensations = load_test_sensor(sensor_file);
+
+    std::vector<MarkovPtr> markovs;
+    markovs.reserve(sensations.size());
+    for (auto&& sen : sensations) {
+        auto markov = std::make_shared<LocMarkov>(loc_map, sen);
+        markovs.emplace_back(markov);
+    }
+    return markovs;
+}
+
+inline void get_emission_prob_using_knn(
+    std::list<std::pair<int, std::vector<rsrp_t>>> const& test_data_aligned, KNN<rsrp_t> const& knn,
+    LocationMap const& loc_map, std::vector<EmissionProb>& emission_probs,
+    std::vector<LocationPtr>& locations, int T = -1) {
+    if (T != -1) {
+        emission_probs.reserve(T);
+        locations.reserve(T);
+    }
+    for (auto&& [loc, rsrp_aligned] : test_data_aligned) {
+        locations.emplace_back(loc_map.get_loc(loc));
+        std::vector<double> label_prob = knn.predict_prob(rsrp_aligned);
+        std::unordered_map<LocationPtr, Prob> prob_map;
+        for (auto&& _loc : loc_map.get_loc_set()) {
+            prob_map[_loc] = label_prob[_loc->id];
+        }
+        emission_probs.emplace_back(std::move(prob_map));
     }
 }
 

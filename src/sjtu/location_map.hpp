@@ -58,7 +58,7 @@ class LocationMap {
     }
 
     LocationMap(int m, int n, Point&& left_down, Point&& right_up) 
-        : m(m), n(n), loc_map(m, std::vector<LocationPtr>(n)), left_down(left_down), right_up(right_up) {
+        : m(m), n(n), loc_map(m, std::vector<LocationPtr>(n)), left_down(std::move(left_down)), right_up(std::move(right_up)) {
         __init();
     }
 
@@ -72,12 +72,14 @@ class LocationMap {
         return sigma;
     }
 
+    template<typename T>
+    requires std::derived_from<T, Location>
     bool add_loc(Point const & point) {
         int i = (point.x() - left_down.x()) * x_ratio;
         int j = (point.y() - left_down.y()) * y_ratio;
         if (!(check(i, j))) throw std::runtime_error("invalid argument");
         if (loc_map[i][j] == nullptr) {
-            loc_map[i][j] = std::make_shared<Location>(loc_dict.size(), point.x(), point.y());
+            loc_map[i][j] = std::make_shared<T>(loc_dict.size(), point);
             loc_dict[loc_map[i][j]->id] = std::make_pair(i, j);
             loc_set.emplace_back(loc_map[i][j]);
             return true;
@@ -86,11 +88,13 @@ class LocationMap {
         }
     }
 
+    template <typename T>
+    requires std::derived_from<T, Location>
     bool add_loc(int i, int j) {
         if (!(check(i, j))) throw std::runtime_error("invalid argument");
         if (loc_map[i][j] == nullptr) {
-            loc_map[i][j] = std::make_shared<Location>(loc_dict.size(), left_down.x() + i * x_step,
-                                                       left_down.y() + j * y_step);
+            loc_map[i][j] = std::make_shared<T>(loc_dict.size(), Point{left_down.x() + i * x_step + x_step / 2,
+                                                       left_down.y() + j * y_step + y_step / 2});
             loc_dict[loc_map[i][j]->id] = std::make_pair(i, j);
             loc_set.emplace_back(loc_map[i][j]);
             return true;
@@ -124,7 +128,7 @@ class LocationMap {
 
     auto& get_loc(int id) const {
         auto [i, j] = loc_dict.at(id);
-        return loc_map[i][j];
+        return loc_map.at(i).at(j);
     }
 
     auto get_loc(Point const & point) const {

@@ -6,6 +6,7 @@
 namespace rxy {
 
 struct Prob {
+    static const Prob ZERO, ONE;
     using value_type = PROB_TYPE;
     value_type prob;
 
@@ -37,7 +38,12 @@ struct Prob {
         return *this;
     }
 
+    constexpr value_type operator*() const { return std::exp(prob); }
+
 };
+
+inline const Prob Prob::ZERO;
+inline const Prob Prob::ONE(0, true);
 
 inline constexpr Prob operator*(Prob const &lhs, Prob const &rhs) { return Prob(lhs.prob + rhs.prob, true); }
 

@@ -13,6 +13,7 @@ private:
     
 public:
     BarrierLoc(int id, Point const & p) : Location(id, p) {}
+    BarrierLoc(int id, Point && p) : Location(id, std::move(p)) {}
 
     void add_blocked_angle(double start, double end) {
         if (!(start < end)) throw std::runtime_error("invalid argument");

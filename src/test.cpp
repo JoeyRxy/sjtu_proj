@@ -14,12 +14,168 @@
 #include <gsl/gsl_interp2d.h>
 #include <gsl/gsl_spline2d.h>
 
+#include "cout_color.hpp"
+#include "registry.hpp"
+
 using namespace std;
 using namespace rxy;
 
+unordered_map<int, unordered_map<int, list<rsrp_t>>> load_original_data(string const& file);
+
 LocationMap load_loc_map();
 
-void test_map() {
+RUN_OFF(knn) {
+    cout << __color::bg_blu() << "--- knn ---" << __color::bg_def() << endl;
+    // string file = "../data/cellinfo-campus_040312.txt";
+    string file = "../data/new/train.txt";
+    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+    auto knn = get_knn(file, pci_order);
+    int total = 0, cnt = 0;
+    string test_file = "../data/new/test.txt";
+    std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
+    if (load_data_aligned(test_file, test_data_aligned, pci_order)) {
+        cout << "load test data success" << endl;
+    } else {
+        cout << "load test data failed" << endl;
+        return;
+    }
+
+    auto loc_map = load_loc_map();
+    double rmse = 0;
+    for (auto&& [loc, data] : test_data_aligned) {
+        total++;
+        cout << "t = " << total << endl;
+        int pred = knn.predict(data);
+        if (pred == loc) {
+            cout << __color::gre() << "\t" << loc_map.get_loc(loc)->point << __color::def() << endl;
+            ++cnt;
+        } else {
+            double dist = minkowski(loc_map.get_loc(loc)->point, loc_map.get_loc(pred)->point);
+            cout << "\t" << __color::gre() << loc_map.get_loc(loc)->point << __color::def()
+                 << " vs. " << __color::red() << loc_map.get_loc(pred)->point << __color::def()
+                 << ": " << dist << endl;
+            rmse += dist * dist;
+        }
+    }
+    cout << "accuracy: " << static_cast<double>(cnt) / total << endl;
+    cout << "RMSE: " << sqrt(rmse / total) << endl;
+}
+
+inline void check_emission_prob(EmissionProb emission_prob) {
+    map<Prob::value_type, int, greater<Prob::value_type>> prob_loc_map;
+    for (auto&& [_, prob] : emission_prob) {
+        prob_loc_map[*prob]++;
+    }
+    for (auto&& [prob, loc_ls] : prob_loc_map) {
+        cout << prob << ": " << loc_ls << endl;
+    }
+}
+
+inline void check_markov(MarkovPtr markov, std::list<LocationPtr> const & loc_ls) {
+    for (auto it = loc_ls.begin(); it != loc_ls.end(); ++it) {
+        cout << __color::bg_blu() << (*it)->point << __color::bg_def() << endl;
+        for (auto jt = loc_ls.begin(); jt != loc_ls.end(); ++jt) {
+            auto prob = *(*markov)(*it, *jt);
+            if (prob > 0.01)
+                cout << "\t-> " << (*jt)->point << ": " << prob << '\n';
+        }
+    }
+}
+
+RUN(procedure) {
+    string file = "../data/new/train.txt";
+    string sensor_file = "../data/new/test_sensor.txt";
+    string test_file = "../data/new/test.txt";
+
+    int top_k = 3000;
+
+    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+    // ---- location map ----
+    auto loc_map = load_loc_map();
+    // ------ sensation & markov ------
+    auto markovs = get_markov(sensor_file, loc_map);
+    // check_markov(markovs[0], loc_map.get_loc_set());
+    int T = markovs.size() + 1;
+    auto knn = get_knn(file, pci_order, top_k);
+    std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
+    load_data_aligned(test_file, test_data_aligned, pci_order);
+
+    // ===== knn =====
+    cout << __color::bg_blu() << "--- KNN ---" << __color::bg_def() << endl;
+    int total = 0;
+    int knn_cnt = 0;
+    int knn_rmse = 0;
+    for (auto&& [loc, data] : test_data_aligned) {
+        total++;
+        cout << "t = " << total << endl;
+        int pred = knn.predict(data);
+        if (pred == loc) {
+            cout << __color::gre() << "\t" << loc_map.get_loc(loc)->point << __color::def() << endl;
+            ++knn_cnt;
+        } else {
+            double dist = minkowski(loc_map.get_loc(loc)->point, loc_map.get_loc(pred)->point);
+            cout << "\t" << __color::gre() << loc_map.get_loc(loc)->point << __color::def()
+                 << " vs. " << __color::red() << loc_map.get_loc(pred)->point << __color::def()
+                 << ": " << dist << endl;
+            knn_rmse += dist * dist;
+        }
+    }
+    
+    cout << __color::bg_blu() << "--- HMM ---" << __color::bg_def() << endl;
+
+    // ------ load data ------
+    vector<EmissionProb> emission_probs;
+    vector<LocationPtr> locations;
+
+    get_emission_prob_using_knn(test_data_aligned, knn, loc_map, emission_probs, locations, T);
+    // {
+    //     int t = 0;
+    //     for (auto & emit_prob : emission_probs) {
+    //         cout << __color::bg_blu() << "T = " << ++t << __color::bg_def() << endl;
+    //         check_emission_prob(emit_prob);
+    //         cout << " ======================= " << endl;
+    //     }
+    // }
+    // ------ init prob -------
+    unordered_map<LocationPtr, Prob> init_probs;
+    for (auto&& loc : loc_map.get_loc_set()) {
+        // init_probs[loc] = emission_probs[0][loc];
+        init_probs[loc] = Prob::ONE;
+    }
+    // ------ hmm ------
+    auto pred_locs = HMM{loc_map.get_loc_set()}(markovs, init_probs, emission_probs);
+    int cnt = 0;
+    double rmse = 0;
+    for (int t = 0; t < T; ++t) {
+        cout << "t = " << (t + 1) << endl;
+        auto locptr = locations[t];
+        auto pred_locptr = pred_locs[t];
+        if (locptr == nullptr) {
+            cout << "locptr is null" << endl;
+        }
+        if (pred_locptr == nullptr) {
+            cout << "pred_locptr is null" << endl;
+        }
+        if (locptr->id == 
+            pred_locptr->id) {
+            ++cnt;
+            cout << __color::gre() << "\t" << pred_locs[t]->point << __color::def() << endl;
+        } else {
+            double dist = minkowski(locations[t]->point, pred_locs[t]->point);
+            cout << "\t" << __color::gre() << locations[t]->point << __color::def() << " vs. "
+                 << __color::red() << pred_locs[t]->point << __color::def() << ": "
+                 << dist << endl;
+            rmse += dist * dist;
+        }
+    }
+
+    cout << "HMM's accuracy = " << (double)cnt / T << endl;
+    cout << "HMM's RMSE: " << sqrt(rmse / T) << endl;
+    cout << "KNN's accuracy: " << static_cast<double>(knn_cnt) / total << endl;
+    cout << "KNN's RMSE: " << sqrt(knn_rmse / total) << endl;
+}
+
+RUN_OFF(_map) {
     string file = "../data/train.txt";
     auto loc_map = load_loc_map();
     unordered_map<int, unordered_map<int, list<rsrp_t>>> loc_pci_map;
@@ -49,43 +205,7 @@ void test_map() {
     }
 }
 
-void test_eigen() {
-    Eigen::MatrixXd A(2, 2);
-    A << 1, 2, 3, 4;
-    Eigen::MatrixXd B(2, 2);
-    B << 5, 6, 7, 8;
-    Eigen::MatrixXd C = A * B;
-    cout << C << endl;
-}
-
-void test_interpolate() {
-    vector<double> x(15);
-    vector<double> y(x.size());
-    for (int i = 0; i < x.size(); ++i) {
-        x[i] = i;
-        y[i] = sin(x[i]);
-    }
-    gsl_interp_accel *acc = gsl_interp_accel_alloc();
-    gsl_spline *spline = gsl_spline_alloc(gsl_interp_cspline, x.size());
-    gsl_spline_init(spline, x.data(), y.data(), x.size());
-    double delta = 0.1;
-    int N = (x.back() - x.front()) / delta;
-    vector<double> x_new;
-    x_new.reserve(N);
-    vector<double> y_new;
-    y_new.reserve(N);
-    for (double xi = x.front(); xi <= x.back(); xi += delta) {
-        x_new.push_back(xi);
-        y_new.push_back(gsl_spline_eval(spline, xi, acc));
-    }
-    gsl_spline_free(spline);
-    gsl_interp_accel_free(acc);
-    for (int i = 0; i < x_new.size(); ++i) {
-        cout << setprecision(12) << x_new[i] << "\t" << y_new[i] << "\ttrue val: " << sin(x_new[i]) << endl;
-    }
-}
-
-void test_interpolate2d() {
+RUN_OFF(interpolate2d) {
     // prepare data
     auto func = [](double x, double y) { return 100. * sin(x) * cos(y); };
     double start = -2, end = 2, delta = 0.5;
@@ -147,7 +267,7 @@ void test_interpolate2d() {
     cout << "max diff: " << max_diff << endl;
 }
 
-void test_interp_prob() {
+RUN_OFF(interp_prob) {
     // prepare data
     unordered_map<Point, unordered_map<rsrp_t, Prob>> data;
     // (0, 0)
@@ -240,4 +360,75 @@ void test_interp_prob() {
         sum += p;
     }
     cout << "sum: " << sum << endl;
+}
+
+RUN_OFF(interpolation) {
+    auto loc_map = load_loc_map();
+    auto data_map = load_original_data("../data/train.txt");
+    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+    int pci = pci_order[0];
+    std::unordered_map<Point, std::unordered_map<rsrp_t, Prob>> samples;
+    vector<int> sm_set{1,2,3,4,7,8,9,10,13,14,15,16,19,20,21,22};
+    for (auto loc : sm_set) {
+        auto & rsrp_ls = data_map[loc][pci];
+        unordered_map<rsrp_t, int> cnt_map;
+        for (auto & rsrp : rsrp_ls) {
+            cnt_map[rsrp]++;
+        }
+        unordered_map<rsrp_t, Prob> prob_map;
+        prob_map.reserve(cnt_map.size());
+        if (cnt_map.size() > 3) {
+            vector<int> cnt_ls;
+            cnt_ls.reserve(cnt_map.size());
+            for (auto & [rsrp, cnt] : cnt_map) {
+                cnt_ls.emplace_back(cnt);
+            }
+            sort(cnt_ls.begin(), cnt_ls.end(), greater<int>());
+            while (cnt_ls.size() > 3) {
+                cnt_ls.pop_back();
+            }
+            int cnt3 = cnt_ls[2];
+            double S = accumulate(cnt_ls.begin(), cnt_ls.end(), 0);
+            for (auto & [rsrp, cnt] : cnt_map) {
+                if (cnt >= cnt3) {
+                    prob_map.emplace(rsrp, Prob(cnt / S));
+                }
+            }
+        } else {
+            double S = accumulate(cnt_map.begin(), cnt_map.end(), 0, [](int a, auto & b) {
+                return a + b.second;
+            });
+            for (auto & [rsrp, cnt] : cnt_map) {
+                prob_map.emplace(rsrp, Prob(cnt / S));
+            }
+        }
+        samples.emplace(loc_map.get_loc(loc)->point, std::move(prob_map));
+    }
+    ProbInterp interp(samples);
+    std::unordered_map<Point, std::map<rsrp_t, Prob>> points_to_interp;
+    points_to_interp.reserve(samples.size() * 2);
+    double x0 = 0, x1 = 15, y0 = 0, y1 = 15;
+    auto [x_step, y_step] = loc_map.step();
+    for (double x = x0 + x_step / 2; x < x1; x += x_step) {
+        for (double y = y0; y < y1; y += y_step) {
+            points_to_interp.emplace(Point{x, y}, std::map<rsrp_t, Prob>{});
+        }
+    }
+    for (double y = y0 + y_step / 2; y < y1; y += y_step) {
+        for (double x = x0; x < x1; x += x_step) {
+            points_to_interp.emplace(Point{x, y}, std::map<rsrp_t, Prob>{});
+        }
+    }
+    for (double x = x0 + x_step / 2; x < x1; x += x_step) {
+        for (double y = y0 + y_step / 2; y < y1; y += y_step) {
+            points_to_interp.emplace(Point{x, y}, std::map<rsrp_t, Prob>{});
+        }
+    }
+    interp(points_to_interp);
+    for (auto & [point, interp_map] : points_to_interp) {
+        cout << __color::bg_blu() << point << __color::bg_def() << endl;
+        for (auto & [rsrp, prob] : interp_map) {
+            cout << '\t' << rsrp << ": " << prob << endl;
+        }
+    }
 }

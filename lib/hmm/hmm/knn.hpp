@@ -67,6 +67,7 @@ class KNN {
                             return a.first < b.first;
                         });
         std::unordered_map<int, double> label_weight;
+        label_weight.reserve(label_num);
         for (int i = 0; i < topk; ++i) {
             if (distances[i].first == 0) {
                 return distances[i].second;

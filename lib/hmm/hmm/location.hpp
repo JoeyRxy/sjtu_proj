@@ -101,7 +101,7 @@ struct Location {
     int id;
     Point point;
 
-    constexpr Location(int id, Point::value_type x, Point::value_type y) : id(id), point(x, y) {}
+    // constexpr Location(int id, Point::value_type x, Point::value_type y) : id(id), point(x, y) {}
     constexpr Location(int id, Point const& point) : id(id), point(point) {}
     constexpr Location(int id, Point&& point) : id(id), point(std::move(point)) {}
     virtual ~Location() = default;
