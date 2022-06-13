@@ -8,17 +8,11 @@ namespace rxy {
 
 class Markov {
 protected:
-    Sensation const* sense;
-private:
-    const bool is_move_in;
+    Sensation const sense;
+
 public:
-    Markov(Sensation const& sense) : sense(&sense), is_move_in(false) {}
-    Markov(Sensation && sense) : sense(new Sensation(std::move(sense))), is_move_in(true) {}
-    virtual ~Markov() {
-        if (is_move_in && sense != nullptr) {
-            delete sense;
-        }
-    }
+    Markov(Sensation const& sense) : sense(sense) {}
+    Markov(Sensation && sense) : sense(std::move(sense)) {}
 
     virtual Prob operator()(LocationPtr prev, LocationPtr cur) const = 0;
 };

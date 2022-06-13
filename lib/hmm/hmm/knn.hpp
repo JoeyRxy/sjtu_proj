@@ -14,9 +14,8 @@ class KNN {
     int label_num;
     int const topk;
     std::function<double(const std::vector<T>&, const std::vector<T>&)> distance;
-    std::vector<std::vector<T>> const* data;
-    std::vector<int> const* labels;
-    bool is_moved;
+    std::vector<std::vector<T>> data;
+    std::vector<int> labels;
 
    public:
     KNN(int topk, std::function<double(const std::vector<T>&, const std::vector<T>&)> const&
@@ -28,39 +27,33 @@ class KNN {
         : topk(topk), distance(std::move(distance_function)) {}
     
 
-    ~KNN() {
-        if (is_moved) {
-            if (data) delete data;
-            if (labels) delete labels;
-        }
-    }
-
+    /**
+     * @deprecated
+     * */
     void train(std::vector<std::vector<T>> const& data, std::vector<int> const& labels) {
-        is_moved = false;
         N_ = data.size();
         if (!(data.size() > 0)) throw std::runtime_error("invalid argument");
-        this->data = &data;
+        this->data = data;
         if (!(data.size() == labels.size())) throw std::runtime_error("invalid argument");
-        this->labels = &labels;
+        this->labels = labels;
         label_num = *std::max_element(labels.begin(), labels.end()) + 1;
     }
 
     void train(std::vector<std::vector<T>> && data, std::vector<int> && labels) {
-        is_moved = true;
         N_ = data.size();
         if (N_ <= 0 || N_ != labels.size()) {
             throw std::invalid_argument("data and labels size must be equal");
         }
-        this->data = new std::vector<std::vector<T>>(std::move(data));
+        this->data = std::move(data);
         label_num = *std::max_element(labels.begin(), labels.end()) + 1;
-        this->labels = new std::vector<int>(std::move(labels));
+        this->labels = std::move(labels);
     }
 
     int predict(std::vector<T> const& X) const {
         std::vector<std::pair<double, int>> distances;
         distances.reserve(N_);
         for (int i = 0; i < N_; ++i) {
-            distances.emplace_back(distance(X, (*data)[i]), (*labels)[i]);
+            distances.emplace_back(distance(X, data[i]), labels[i]);
         }
         std::nth_element(distances.begin(), distances.begin() + topk, distances.end(),
                         [](std::pair<double, int> const& a, std::pair<double, int> const& b) {
@@ -91,9 +84,9 @@ class KNN {
 
     std::vector<double> predict_prob(std::vector<T> const & X) const {
         std::vector<std::pair<double, int>> distances;
-        distances.reserve(data->size());
+        distances.reserve(N_);
         for (int i = 0; i < N_; ++i) {
-            distances.emplace_back(distance(X, (*data)[i]), (*labels)[i]);
+            distances.emplace_back(distance(X, data[i]), labels[i]);
         }
 
         std::nth_element(distances.begin(), distances.begin() + topk, distances.end(),

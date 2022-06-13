@@ -209,35 +209,6 @@ inline std::pair<double, double> get_mean_var(InputIterator begin, InputIterator
     }
 }
 
-inline auto load_test_sensor(std::string const& test_sensor_file) {
-    static Point North{0, 1}, South{0, -1}, East{1, 0}, West{-1, 0}, Stop{0, 0};
-    std::ifstream ifs(test_sensor_file);
-    if (!ifs) throw std::runtime_error("failed to open test_sensor_file");
-    std::list<Sensation> sensations;
-    char c;
-    while (ifs.get(c)) {
-        switch (c) {
-            case 'N':
-                sensations.emplace_back(North);
-                break;
-            case 'S':
-                sensations.emplace_back(South);
-                break;
-            case 'E':
-                sensations.emplace_back(East);
-                break;
-            case 'W':
-                sensations.emplace_back(West);
-                break;
-            case 'O':
-                sensations.emplace_back(Stop);
-                break;
-        }
-    }
-    ifs.close();
-    return sensations;
-}
-
 inline KNN<rsrp_t> get_knn(std::string const& file, std::vector<int> const& pci_order, int top_k = 300) {
     std::list<std::pair<int, std::vector<rsrp_t>>> loc_data_aligned;
     KNN<rsrp_t> knn(top_k, KNN<rsrp_t>::distance_inv_weighted_euc);
@@ -260,12 +231,38 @@ inline KNN<rsrp_t> get_knn(std::string const& file, std::vector<int> const& pci_
 }
 
 inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_map) {
-    auto sensations = load_test_sensor(sensor_file);
+    static Point North{0, 1}, South{0, -1}, East{1, 0}, West{-1, 0}, Stop{0, 0};
+    std::ifstream ifs(sensor_file);
+    if (!ifs) throw std::runtime_error("failed to open test_sensor_file");
+    std::list<Sensation> sensations;
+    double dt;
+    ifs >> dt;
+    char c;
+    while (ifs.get(c)) {
+        switch (c) {
+            case 'N':
+                sensations.emplace_back(North, dt);
+                break;
+            case 'S':
+                sensations.emplace_back(South, dt);
+                break;
+            case 'E':
+                sensations.emplace_back(East, dt);
+                break;
+            case 'W':
+                sensations.emplace_back(West, dt);
+                break;
+            case 'O':
+                sensations.emplace_back(Stop, dt);
+                break;
+        }
+    }
+    ifs.close();
 
     std::vector<MarkovPtr> markovs;
     markovs.reserve(sensations.size());
     for (auto&& sen : sensations) {
-        auto markov = std::make_shared<LocMarkov>(loc_map, sen);
+        auto markov = std::make_shared<LocMarkov>(loc_map, std::move(sen));
         markovs.emplace_back(markov);
     }
     return markovs;

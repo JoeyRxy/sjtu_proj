@@ -5,7 +5,7 @@
 namespace rxy {
 
 void LocMarkov::__init() {
-    const Point& delta = sense->delta();
+    Point delta = sense.delta();
     static Prob zero;
     for (auto && loc : loc_map.get_loc_set()) {
         Point new_point = loc->point + delta;

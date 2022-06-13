@@ -19,6 +19,8 @@ protected:
     friend constexpr bool operator==(Point const& lhs, Point const& rhs);
     friend constexpr Point operator+(Point const& lhs, Point const& rhs);
     friend constexpr Point operator-(Point const& lhs, Point const& rhs);
+    friend constexpr Point operator*(Point const& lhs, double scale);
+    friend constexpr Point operator/(Point const& lhs, double scale);
     friend std::ostream& operator<<(std::ostream& os, Point const& p);
 
     value_type x_, y_;
@@ -84,6 +86,14 @@ inline constexpr Point operator+(Point const& lhs, Point const& rhs) {
 
 inline constexpr Point operator-(Point const& lhs, Point const& rhs) {
     return {lhs.x_ - rhs.x_, lhs.y_ - rhs.y_};
+}
+
+inline constexpr Point operator*(Point const& lhs, double scale) {
+    return {lhs.x_ * scale, lhs.y_ * scale};
+}
+
+inline constexpr Point operator/(Point const& lhs, double scale) {
+    return {lhs.x_ / scale, lhs.y_ / scale};
 }
 
 inline constexpr Point::value_type minkowski(Point const& lhs, Point const& rhs, int p = 2) {
