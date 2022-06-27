@@ -10,5 +10,7 @@
 #cmakedefine ECCENTRICITY ${ECCENTRICITY}
 #cmakedefine MINKOWSKI_P ${MINKOWSKI_P}
 #cmakedefine ENUMER_LIMIT ${ENUMER_LIMIT}
+#cmakedefine EXT_RATE ${EXT_RATE}
+#cmakedefine EPSILON ${EPSILON}
 
 #endif

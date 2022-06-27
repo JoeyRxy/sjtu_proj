@@ -7,12 +7,12 @@
 
 #include "hmm/hmm.hpp"
 #include "hmm/knn.hpp"
-#include "sjtu/barrier_loc.hpp"
 #include "sjtu/loc_markov.hpp"
 #include "sjtu/location_map.hpp"
 #include "sjtu/max_a_posteri.hpp"
 #include "sjtu/util.hpp"
 #include "sjtu/interp.hpp"
+#include "sjtu/ext_loc.hpp"
 
 #include "cout_color.hpp"
 
@@ -45,41 +45,25 @@ auto load_original_data(string const& file) {
 auto load_loc_map() {
     int m = 10, n = 15;
     LocationMap loc_map(m, n, {0, 0}, {20, 30});
-    auto [x_step, y_step] = loc_map.step();
+    // auto [x_step, y_step] = loc_map.step();
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
-            loc_map.add_loc<BarrierLoc>(i, j);
+            loc_map.add_loc(i, j);
         }
     }
+    // set obstacles
+
     return loc_map;
 }
-
-unordered_map<LocationPtr, int> get_number_for_loc(
-    unordered_map<int, unordered_map<int, list<rsrp_t>>> const& loc_pci_map,
-    LocationMap const& loc_map, int& S
-    ) {
-    unordered_map<LocationPtr, int> cnt_map;
-    S = 0;
-    for (auto&& [loc, pci_rsrp_map] : loc_pci_map) {
-        int& cnt = cnt_map[loc_map.get_loc(loc)];
-        for (auto&& [_, rsrp_list] : pci_rsrp_map) {
-            cnt += rsrp_list.size();
-        }
-        S += cnt;
-    }
-    return cnt_map;
-}
-
-
 
 /**
  * @return EmissionProb list
  * */
-bool get_emission_prob_using_map(string const& file, LocationMap const& loc_map,
+inline bool get_emission_prob_using_map(std::string const& file, LocationMap const& loc_map,
                                  MaxAPosteri const& max_a_posteri,
-                                 vector<EmissionProb>& emission_probs,
-                                 vector<LocationPtr>& locations, int T = -1) {
-    ifstream ifs(file);
+                                 std::vector<EmissionProb>& emission_probs,
+                                 std::vector<LocationPtr>& locations, int T = -1) {
+    std::ifstream ifs(file);
     Parser parser(ifs);
     if (parser.parse()) {
         if (T != -1) {
@@ -87,7 +71,7 @@ bool get_emission_prob_using_map(string const& file, LocationMap const& loc_map,
             locations.reserve(T);
         }
         for (auto&& cell_info : parser.get()) {
-            list<pair<int, rsrp_t>> pci_rsrp_list;
+            std::list<std::pair<int, rsrp_t>> pci_rsrp_list;
             for (auto&& [pci, info] : cell_info.pci_info_list) {
                 pci_rsrp_list.emplace_back(pci, info->rsrp);
             }
@@ -95,7 +79,7 @@ bool get_emission_prob_using_map(string const& file, LocationMap const& loc_map,
             emission_probs.emplace_back(max_a_posteri(pci_rsrp_list));
         }
     } else {
-        cerr << "parse failed" << endl;
+        std::cerr << "parse failed" << std::endl;
         ifs.close();
         return false;
     }

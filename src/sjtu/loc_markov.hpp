@@ -6,13 +6,8 @@ namespace rxy {
 
 class LocMarkov : public Markov {
    private:
-    LocationMap const& loc_map;
+    LocationMap const& loc_map; // need to ensure that loc_map is not out of scope or released before THIS instance
     std::unordered_map<LocationPtr, std::unordered_map<LocationPtr, Prob>> _tran_prob;
-
-    // ====== helpers ====== //
-    constexpr Prob __tran_prob(Point const& from, Point const& to, int p = 2) const {
-       return log_nd_pdf(minkowski(from, to, p), ND_MU, loc_map.get_sigma());
-    }
 
     void __init();
 

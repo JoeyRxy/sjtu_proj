@@ -32,7 +32,9 @@ public:
     constexpr Point(value_type x, value_type y) : x_(x), y_(y) {
     }
 
-    virtual ~Point() = default;
+    constexpr Point() = default;
+
+    ~Point() = default;
 
     constexpr Point& operator+=(Point const& rhs) {
         x_ += rhs.x_;
@@ -115,16 +117,18 @@ struct Location {
     constexpr Location(int id, Point const& point) : id(id), point(point) {}
     constexpr Location(int id, Point&& point) : id(id), point(std::move(point)) {}
     virtual ~Location() = default;
+
+    virtual size_t get_hash() const { return id; }
+
+    virtual bool operator==(Location const & rhs) const {
+        return id == rhs.id;
+    }
+    
 };
 
-inline constexpr bool operator==(Location const& lhs, Location const& rhs) {
-    return lhs.id == rhs.id;
-}
-
-inline bool operator==(LocationPtr const& lhs, LocationPtr const& rhs) {
-    if (lhs == nullptr && rhs == nullptr) return true;
-    if (lhs == nullptr || rhs == nullptr) return false;
-    return lhs->id == rhs->id;
+inline bool operator==(LocationPtr lhs, LocationPtr rhs) {
+    if (lhs && rhs) return *lhs == *rhs;
+    else return lhs == rhs;
 }
 
 }  // namespace rxy
@@ -148,14 +152,14 @@ struct hash<rxy::PointPtr> {
 
 template <>
 struct hash<rxy::Location> {
-    size_t operator()(rxy::Location const& loc) const { return hash<int>()(loc.id); }
+    size_t operator()(rxy::Location const& loc) const { return loc.get_hash(); }
 };
 
 template <>
 struct hash<rxy::LocationPtr> {
     size_t operator()(rxy::LocationPtr const& loc) const {
         if (loc == nullptr) return numeric_limits<size_t>::max();
-        return hash<int>()(loc->id);
+        return loc->get_hash();
     }
 };
 

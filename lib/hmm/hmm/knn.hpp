@@ -10,7 +10,7 @@ template <typename T>
 requires std::is_arithmetic_v<T>
 class KNN {
    private:
-    int N_;
+    size_t N_;
     int label_num;
     int const topk;
     std::function<double(const std::vector<T>&, const std::vector<T>&)> distance;
@@ -52,7 +52,7 @@ class KNN {
     int predict(std::vector<T> const& X) const {
         std::vector<std::pair<double, int>> distances;
         distances.reserve(N_);
-        for (int i = 0; i < N_; ++i) {
+        for (size_t i = 0; i < N_; ++i) {
             distances.emplace_back(distance(X, data[i]), labels[i]);
         }
         std::nth_element(distances.begin(), distances.begin() + topk, distances.end(),
@@ -85,7 +85,7 @@ class KNN {
     std::vector<double> predict_prob(std::vector<T> const & X) const {
         std::vector<std::pair<double, int>> distances;
         distances.reserve(N_);
-        for (int i = 0; i < N_; ++i) {
+        for (size_t i = 0; i < N_; ++i) {
             distances.emplace_back(distance(X, data[i]), labels[i]);
         }
 
@@ -144,12 +144,12 @@ class KNN {
     static inline double distance_inv_weighted_euc(std::vector<T> const& x, std::vector<T> const& y) {
         double sum = 0, t;
         if (std::is_integral_v<T>) {
-            for (int i = 0; i < x.size(); ++i) {
+            for (size_t i = 0; i < x.size(); ++i) {
                 t = (x[i] - y[i]) / static_cast<double>(x[i]);
                 sum += t * t;
             }
         } else {
-            for (int i = 0; i < x.size(); ++i) {
+            for (size_t i = 0; i < x.size(); ++i) {
                 t = (x[i] - y[i]) / x[i];
                 sum += t * t;
             }

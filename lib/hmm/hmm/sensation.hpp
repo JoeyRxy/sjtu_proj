@@ -10,6 +10,8 @@ struct Sensation {
     static constexpr Point::value_type pi = std::numbers::pi_v<Point::value_type>;
     Point _delta;
 
+    Sensation() = default;
+
     Sensation(Point::value_type direction, Point::value_type speed, double dt)
         : _delta{speed * cos(direction) * dt, speed * sin(direction) * dt} {}
 
@@ -22,3 +24,21 @@ struct Sensation {
 };
 
 }  // namespace rxy
+
+namespace std {
+    // overload hash
+    template <>
+    struct hash<rxy::Sensation> {
+        size_t operator()(rxy::Sensation const& s) const {
+            return hash<rxy::Point>()(s._delta);
+        }
+    };
+
+    template <>
+    struct equal_to<rxy::Sensation> {
+        bool operator()(rxy::Sensation const& lhs, rxy::Sensation const& rhs) const {
+            return lhs._delta == rhs._delta;
+        }
+    };
+    
+}

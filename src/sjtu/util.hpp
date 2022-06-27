@@ -17,6 +17,7 @@
 #include <gsl/gsl_spline2d.h>
 
 #include "line_parser/parser.h"
+#include "sjtu/max_a_posteri.hpp"
 
 namespace rxy {
 
@@ -69,7 +70,7 @@ inline bool load_data_aligned(
     }
     std::unordered_map<int, int> idx_map;
     idx_map.reserve(pci_order.size());
-    for (int i = 0; i < pci_order.size(); ++i) {
+    for (size_t i = 0; i < pci_order.size(); ++i) {
         idx_map[pci_order[i]] = i;
     }
     Parser parser(in);  // 构造时传入需要进行解析的文本
@@ -232,6 +233,7 @@ inline KNN<rsrp_t> get_knn(std::string const& file, std::vector<int> const& pci_
 
 inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_map) {
     static Point North{0, 1}, South{0, -1}, East{1, 0}, West{-1, 0}, Stop{0, 0};
+    std::unordered_map<Sensation, MarkovPtr> markov_cache;
     std::ifstream ifs(sensor_file);
     if (!ifs) throw std::runtime_error("failed to open test_sensor_file");
     std::list<Sensation> sensations;
@@ -255,6 +257,12 @@ inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_m
             case 'O':
                 sensations.emplace_back(Stop, dt);
                 break;
+            default:
+                continue;
+        }
+        auto it = markov_cache.emplace(sensations.back(), nullptr).first;
+        if (!it->second) {
+            it->second = std::make_shared<LocMarkov>(loc_map, sensations.back());
         }
     }
     ifs.close();
@@ -262,9 +270,11 @@ inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_m
     std::vector<MarkovPtr> markovs;
     markovs.reserve(sensations.size());
     for (auto&& sen : sensations) {
-        auto markov = std::make_shared<LocMarkov>(loc_map, std::move(sen));
-        markovs.emplace_back(markov);
+        markovs.emplace_back(markov_cache[sen]);
     }
+#ifdef DEBUG 
+    std::cout << "GOT Markov." << std::endl;
+#endif
     return markovs;
 }
 
@@ -280,7 +290,8 @@ inline void get_emission_prob_using_knn(
         locations.emplace_back(loc_map.get_loc(loc));
         std::vector<double> label_prob = knn.predict_prob(rsrp_aligned);
         std::unordered_map<LocationPtr, Prob> prob_map;
-        for (auto&& _loc : loc_map.get_loc_set()) {
+        prob_map.reserve(loc_map.get_ext_list().size());
+        for (auto&& _loc : loc_map.get_ext_list()) {
             prob_map[_loc] = label_prob[_loc->id];
         }
         emission_probs.emplace_back(std::move(prob_map));

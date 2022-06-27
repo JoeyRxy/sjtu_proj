@@ -36,6 +36,8 @@ public:
     std::string const& name() const {
         return name_;
     }
+
+    virtual ~Job() = default;
 };
 
 class JobRegistry {

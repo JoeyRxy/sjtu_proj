@@ -1,12 +1,13 @@
 #include "hmm.hpp"
 
 namespace rxy {
+#ifdef DEBUG
 
-static void pM(std::list<LocationPtr> const & loc_set, Markov const & markov, LocationPtr const & loc) {
-    for (auto & prev: loc_set) {
-        auto prob = *markov(prev, loc);
+static void pM(std::unordered_set<LocationPtr> const & loc_set, Markov const & markov, LocationPtr const & loc) {
+    for (auto & prv: loc_set) {
+        auto prob = *markov(prv, loc);
         if (prob > 0) {
-            std::cout << prev->point << " -> " << loc->point << ": " << prob << '\n';
+            std::cout << prv->point << " -> " << loc->point << ": " << prob << '\n';
         }
     }
     std::cout << "done" << std::endl;
@@ -17,6 +18,8 @@ static void pLP(std::unordered_map<LocationPtr, Prob> const & _m) {
         std::cout << loc->point << ": " << prob << std::endl;
     }
 }
+
+#endif
 
 /**
  * @brief Viterbi algorithm for HMM in time sequence { 0, 1, 2, ... T - 1 }
@@ -31,16 +34,19 @@ static void pLP(std::unordered_map<LocationPtr, Prob> const & _m) {
  * @param emission_probs: the rsrp emission probability P(X|L) corresponding to every location at
  * each time step t.
  * */
-std::vector<LocationPtr> const HMM::operator()(std::vector<MarkovPtr> const& markovs,
+std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markovs,
                                             std::unordered_map<LocationPtr, Prob> const& init_prob,
                                             std::vector<EmissionProb> const& emission_probs) const {
     // number of states (locations)
-    int const N = loc_set->size();
-    if (!(init_prob.size() == N)) throw std::runtime_error("invalid argument");
+    auto N = loc_set->size();
+    if (init_prob.size() != N) throw std::runtime_error("init_prob.size() != N");
+    if (emission_probs[0].size() != N) throw std::runtime_error("emission_probs[0].size() != N");
     // T is the number of time steps
-    int T = emission_probs.size();
-    if (!(markovs.size() == T - 1)) throw std::runtime_error("invalid argument");
-    std::unordered_map<LocationPtr, Prob> prev, cur;
+    auto T = emission_probs.size();
+    if (T == 0 || !(markovs.size() == T - 1)) throw std::runtime_error("T == 0 OR markovs.size() != T - 1");
+    std::unordered_map<LocationPtr, Prob> prv, cur;
+    prv.reserve(N);
+    cur.reserve(N);
     std::vector<std::unordered_map<LocationPtr, LocationPtr>> psi(T - 1);
     // t = 0
     bool all_zero = true;
@@ -56,15 +62,15 @@ std::vector<LocationPtr> const HMM::operator()(std::vector<MarkovPtr> const& mar
     }
     std::vector<LocationPtr> ret(T);
     int start = 0;
-    for (int t = 1; t < T; ++t) {
+    for (size_t t = 1; t < T; ++t) {
         auto const& markov = *markovs[t - 1];
-        std::swap(prev, cur);
+        std::swap(prv, cur);
         // cur.clear();
         for (auto&& loc : *loc_set) {
             Prob max_prob;
             LocationPtr max_loc = nullptr;
             for (auto&& prev_loc : *loc_set) {
-                Prob prob = prev[prev_loc] * markov(prev_loc, loc);
+                Prob prob = prv[prev_loc] * markov(prev_loc, loc);
                 if (prob > max_prob) {
                     max_prob = prob;
                     max_loc = prev_loc;
@@ -81,8 +87,8 @@ std::vector<LocationPtr> const HMM::operator()(std::vector<MarkovPtr> const& mar
                 max_prob = Prob::ZERO;
                 max_loc = nullptr;
                 for (auto && loc : *loc_set) {
-                    if (prev[loc] > max_prob) {
-                        max_prob = prev[loc];
+                    if (prv[loc] > max_prob) {
+                        max_prob = prv[loc];
                         max_loc = loc;
                     }
                 }

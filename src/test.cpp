@@ -17,6 +17,11 @@
 #include "cout_color.hpp"
 #include "registry.hpp"
 
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/depth_first_search.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/johnson_all_pairs_shortest.hpp>
+
 using namespace std;
 using namespace rxy;
 
@@ -100,6 +105,12 @@ RUN(procedure) {
     std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
     load_data_aligned(test_file, test_data_aligned, pci_order);
 
+    for (auto & [loc, _] : test_data_aligned) {
+        cout << loc_map.get_loc(loc)->point << endl;
+    }
+
+    cout << " =================== "<< endl;
+
     // ===== knn =====
     cout << __color::bg_blu() << "--- KNN ---" << __color::bg_def() << endl;
     int total = 0;
@@ -126,8 +137,9 @@ RUN(procedure) {
     // ------ load data ------
     vector<EmissionProb> emission_probs;
     vector<LocationPtr> locations;
-
+    cout << "get emission prob ..." << endl;
     get_emission_prob_using_knn(test_data_aligned, knn, loc_map, emission_probs, locations, T);
+    cout << "GOT" << endl;
     // {
     //     int t = 0;
     //     for (auto & emit_prob : emission_probs) {
@@ -138,12 +150,14 @@ RUN(procedure) {
     // }
     // ------ init prob -------
     unordered_map<LocationPtr, Prob> init_probs;
-    for (auto&& loc : loc_map.get_loc_set()) {
+    for (auto&& loc : loc_map.get_ext_list()) {
         // init_probs[loc] = emission_probs[0][loc];
         init_probs[loc] = Prob::ONE;
     }
     // ------ hmm ------
-    auto pred_locs = HMM{loc_map.get_loc_set()}(markovs, init_probs, emission_probs);
+    cout << "viterbi ..." << endl;
+    auto pred_locs = HMM{loc_map.get_ext_list()}.viterbi(markovs, init_probs, emission_probs);
+    cout << "GOT" << endl;
     int cnt = 0;
     double rmse = 0;
     for (int t = 0; t < T; ++t) {
@@ -431,4 +445,50 @@ RUN_OFF(interpolation) {
             cout << '\t' << rsrp << ": " << prob << endl;
         }
     }
+   
+}
+
+RUN_OFF(boost_graph_test) {
+    using namespace boost;
+    using graph_t = boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
+        LocationPtr,
+        boost::property<boost::edge_weight_t, double>>;
+    std::size_t V = 5;
+    graph_t g(V);
+
+    g[0] = std::make_shared<Location>(1, Point{1,2});
+    g[1] = std::make_shared<Location>(2, Point{3,4});
+    g[2] = std::make_shared<Location>(3, Point{5,6});
+    g[3] = std::make_shared<Location>(4, Point{7,8});
+    g[4] = std::make_shared<Location>(5, Point{9,10});
+
+    add_edge(0, 1, 1, g);
+    add_edge(0, 2, 1.5, g);
+    add_edge(0, 3, 2, g);
+    add_edge(1, 4, 0.5, g);
+    add_edge(2, 3, 2.5, g);
+    add_edge(1, 3, 1.5, g);
+    add_edge(1, 2, 2, g);
+    add_edge(2, 4, 3, g);
+
+    // std::vector<double> dist(V);
+
+    // dijkstra_shortest_paths(g, 0, distance_map(dist.data()));
+
+    // auto [begin, end] = vertices(g);
+    // for (auto it = begin; it != end; ++it) {
+    //     cout << *it << ": " << dist[*it] << endl;
+    // }
+
+    std::vector<std::vector<double>> dist_matrix(V, std::vector<double>(V, std::numeric_limits<double>::max()));
+    johnson_all_pairs_shortest_paths(g, dist_matrix);
+
+    for (size_t u = 0; u < V; ++u) {
+        cout << g[u]->point << ":\n";
+        for (size_t v = 0; v < V; ++v) {
+            cout << '\t' << g[v]->point << ": " << dist_matrix[u][v] << '\n';
+        }
+        cout << endl;
+    }
+    
 }

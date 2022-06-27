@@ -9,8 +9,8 @@ struct Token;
 using TokenPtr = std::shared_ptr<Token>;
 
 struct Token {
-    int len;
     std::string str;
+    int len;
     Token() = default;
     Token(std::string&& str) : str(std::move(str)), len(str.size()) {}
     Token(std::string&& str, int len) : str(std::move(str)), len(len) {}

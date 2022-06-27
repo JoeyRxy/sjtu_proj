@@ -95,7 +95,11 @@
 			"numbers": "cpp",
 			"dense": "cpp",
 			"cuchar": "cpp",
-			"scoped_allocator": "cpp"
+			"scoped_allocator": "cpp",
+			"barrier": "cpp",
+			"latch": "cpp",
+			"semaphore": "cpp",
+			"syncstream": "cpp"
 		},
 		"cmake.statusbar.visibility": "compact",
 		"cmake.statusbar.advanced": {

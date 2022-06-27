@@ -4,20 +4,20 @@
 #include "markov.hpp"
 #include "probability.hpp"
 #include "sensation.hpp"
-#include <list>
+#include <unordered_set>
 
 namespace rxy {
 
 class HMM {
    private:
-    std::list<LocationPtr> const *loc_set;
+    std::unordered_set<LocationPtr> const *loc_set;
     const bool is_move_in;
 
    public:
     HMM() = default;
-    HMM(std::list<LocationPtr> const &loc_set) : loc_set(&loc_set), is_move_in(false) {}
-    HMM(std::list<LocationPtr> &&loc_set)
-        : loc_set(new std::list<LocationPtr>(std::move(loc_set))), is_move_in(true) {}
+    HMM(std::unordered_set<LocationPtr> const &loc_set) : loc_set(&loc_set), is_move_in(false) {}
+    HMM(std::unordered_set<LocationPtr> &&loc_set)
+        : loc_set(new std::unordered_set<LocationPtr>(std::move(loc_set))), is_move_in(true) {}
 
     ~HMM() {
         if (is_move_in && loc_set != nullptr) {
@@ -26,7 +26,7 @@ class HMM {
         }
     }
 
-    std::vector<LocationPtr> const operator()(std::vector<MarkovPtr> const &markovs,
+    std::vector<LocationPtr> const viterbi(std::vector<MarkovPtr> const &markovs,
                                            std::unordered_map<LocationPtr, Prob> const &init,
                                            std::vector<EmissionProb> const &emission_probs) const;
 };

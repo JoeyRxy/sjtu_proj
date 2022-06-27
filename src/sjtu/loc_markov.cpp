@@ -1,37 +1,42 @@
 #include "loc_markov.hpp"
 #include <configure.hpp>
-#include "barrier_loc.hpp"
+
+#ifdef DEBUG
+#include <iostream>
+#endif
 
 namespace rxy {
 
 void LocMarkov::__init() {
-    Point delta = sense.delta();
-    static Prob zero;
-    for (auto && loc : loc_map.get_loc_set()) {
+    auto& delta = sense.delta();
+    int N = loc_map.get_ext_dict().size();
+    _tran_prob.reserve(N);
+
+#ifdef DEBUG
+    std::cout << "start Markov computing..." << std::endl;
+#endif
+
+    for (auto && loc : loc_map.get_ext_list()) {
         Point new_point = loc->point + delta;
         auto & Mi = _tran_prob[loc];
-        if (!loc_map.check(new_point) || !loc_map.get_loc(new_point)) {
-            for (auto && dest : loc_map.get_loc_set()) {
-                Mi.emplace(dest, zero);
+        Mi.reserve(N);
+        LocationPtr new_loc;
+        if (!loc_map.check(new_point) || !(new_loc = loc_map.get_ext_loc(new_point))) {
+            for (auto && dest : loc_map.get_ext_list()) {
+                Mi.emplace(dest, Prob::ZERO);
             }
             continue;
         }
-        auto bloc = barrier_loc(loc);
-        if (bloc) {
-            for (auto && dest : loc_map.get_loc_set()) {
-                Point d = dest->point - loc->point;
-                if (d.r() > 0 && bloc->is_blocked(d.phi())) {
-                    Mi.emplace(dest, zero);
-                } else {
-                    Mi.emplace(dest, __tran_prob(new_point, dest->point, MINKOWSKI_P));
-                }
-            }
-        } else {
-            for (auto && dest : loc_map.get_loc_set()) {
-                Mi.emplace(dest, __tran_prob(new_point, dest->point, MINKOWSKI_P));
-            }
+        
+        for (auto && dest : loc_map.get_ext_list()) {
+            Mi.emplace(dest, log_nd_pdf(loc_map.distance(loc, new_loc)));
         }
     }
+
+#ifdef DEBUG
+    std::cout << "Markov trans prob DONE." << std::endl;
+#endif
+
 }
 
 }
