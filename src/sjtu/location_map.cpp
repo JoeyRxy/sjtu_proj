@@ -38,11 +38,11 @@ void LocationMap::compute_distance() const {
 
     for (int x = 0; x < m_ext; ++x) {
         for (int y = 0; y < n_ext; ++y) {
-            if (ext_map[x][y] == nullptr) continue;
+            if (!ext_map[x][y]) continue;
             int u = loc2vertex[ext_map[x][y]];
             for (int k = 0; k < 8; ++k) {
                 int nx = x + dx[k], ny = y + dy[k];
-                if (nx < 0 || nx >= m_ext || ny < 0 || ny >= n_ext || ext_map[nx][ny] == nullptr)
+                if (nx < 0 || nx >= m_ext || ny < 0 || ny >= n_ext || !ext_map[nx][ny])
                     continue;
                 int v = loc2vertex[ext_map[nx][ny]];
                 boost::add_edge(u, v, dist[k], g);

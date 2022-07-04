@@ -17,9 +17,6 @@ namespace rxy {
 
 class LocationMap {
    private:
-    // static constexpr int dx[] = {1, 1, 0, -1, -1, -1, 0, 1};
-    // static constexpr int dy[] = {0, 1, 1, 1, 0, -1, -1, -1};
-
     int m, n;
     std::vector<std::vector<LocationPtr>> loc_map;
     std::vector<std::vector<LocationPtr>> ext_map;
@@ -40,7 +37,8 @@ class LocationMap {
     Prob::value_type sigma;
 
     mutable bool computed = false;
-    mutable std::unordered_map<LocationPtr, std::unordered_map<LocationPtr, Point::value_type>> dist_map;
+    mutable std::unordered_map<LocationPtr, std::unordered_map<LocationPtr, Point::value_type>>
+        dist_map;
 
     void __init() {
         if (!(m > 1 && m <= MAP_SIZE && n > 1 && n <= MAP_SIZE))
@@ -139,28 +137,21 @@ class LocationMap {
         int col_begin = EXT_RATE * j, col_end = EXT_RATE + col_begin;
         for (int k = line_begin; k < line_end; ++k) {
             for (int l = col_begin; l < col_end; ++l) {
-                if (ext_map[k][l])
-                    func(ext_map[k][l]);
+                if (ext_map[k][l]) func(ext_map[k][l]);
             }
         }
     }
 
     std::pair<int, int> get_ext_index(Point const& p) const {
         return std::make_pair(
-            std::min(
-                std::max(0, static_cast<int>(std::floor((p.x() - left_down.x()) * x_ratio_ext))),
-                m_ext - 1),
-            std::min(
-                std::max(0, static_cast<int>(std::floor((p.y() - left_down.y()) * y_ratio_ext))),
-                n_ext - 1));
+            std::min(static_cast<int>((p.x() - left_down.x() * x_ratio_ext)), m_ext - 1),
+            std::min(static_cast<int>((p.y() - left_down.y() * y_ratio_ext)), n_ext - 1));
     }
 
     std::pair<int, int> get_ext_index(Point::value_type x, Point::value_type y) const {
         return std::make_pair(
-            std::min(std::max(0, static_cast<int>(std::floor((x - left_down.x()) * x_ratio_ext))),
-                     m_ext - 1),
-            std::min(std::max(0, static_cast<int>(std::floor((y - left_down.y()) * y_ratio_ext))),
-                     n_ext - 1));
+            std::min(static_cast<int>((x - left_down.x() * x_ratio_ext)), m_ext - 1),
+            std::min(static_cast<int>((y - left_down.y() * y_ratio_ext)), n_ext - 1));
     }
 
     void remove_ext_point(Point point) {
@@ -194,6 +185,10 @@ class LocationMap {
     void remove_ext_rect(Point ld, Point ru) {
         auto [x, y] = get_ext_index(ld);
         auto [x_end, y_end] = get_ext_index(ru);
+        if (x > x_end) std::swap(x, x_end);
+        if (y > y_end) std::swap(y, y_end);
+        if (x_end != m_ext - 1) x_end++;
+        if (y_end != n_ext - 1) y_end++;
         for (; x < x_end; ++x) {
             for (int _y = y; _y < y_end; ++_y) {
                 if (ext_map[x][_y] != nullptr) {
@@ -275,7 +270,6 @@ class LocationMap {
         }
         return dist_map.at(ext_map[i][j]).at(ext_map[x][y]);
     }
-
 };
 
 }  // namespace rxy

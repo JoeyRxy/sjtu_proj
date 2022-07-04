@@ -65,11 +65,14 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
     for (size_t t = 1; t < T; ++t) {
         auto const& markov = *markovs[t - 1];
         std::swap(prv, cur);
+        auto& et = emission_probs[t];
+        auto& pt = psi[t - 1];
         // cur.clear();
         for (auto&& loc : *loc_set) {
             Prob max_prob;
             LocationPtr max_loc = nullptr;
             for (auto&& prev_loc : *loc_set) {
+                // markov[prv_loc][loc]: can optimize for locality
                 Prob prob = prv[prev_loc] * markov(prev_loc, loc);
                 if (prob > max_prob) {
                     max_prob = prob;
@@ -77,12 +80,12 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
                 }
             }
             if (max_loc) {
-                max_prob *= emission_probs[t].at(loc);
+                max_prob *= et.at(loc);
                 if (max_prob != Prob::ZERO) {
                     all_zero = false;
                 }
                 cur[loc] = max_prob;
-                psi[t - 1][loc] = max_loc;
+                pt[loc] = max_loc;
             } else {
                 max_prob = Prob::ZERO;
                 max_loc = nullptr;
@@ -98,7 +101,7 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
                 }
                 start = t;
                 for (auto && loc : *loc_set) {
-                    auto p = init_prob.at(loc) * emission_probs[t].at(loc);
+                    auto p = init_prob.at(loc) * et.at(loc);
                     if (p != Prob::ZERO) {
                         all_zero = false;
                     }

@@ -115,7 +115,7 @@ RUN(procedure) {
     cout << __color::bg_blu() << "--- KNN ---" << __color::bg_def() << endl;
     int total = 0;
     int knn_cnt = 0;
-    int knn_rmse = 0;
+    double knn_rmse = 0;
     for (auto&& [loc, data] : test_data_aligned) {
         total++;
         cout << "t = " << total << endl;

@@ -52,7 +52,7 @@ auto load_loc_map() {
         }
     }
     // set obstacles
-
+    loc_map.remove_ext_rect({4, 10}, {16, 28});
     return loc_map;
 }
 
@@ -87,7 +87,7 @@ inline bool get_emission_prob_using_map(std::string const& file, LocationMap con
     return true;
 }
 
-int main(int argc, char const* argv[]) {
+int main(/* int argc, char const* argv[] **/) {
     RUN_ALL;
     return 0;
 }
