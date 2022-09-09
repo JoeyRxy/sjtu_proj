@@ -34,9 +34,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 find_package(Boost REQUIRED COMPONENTS)
 
-find_package(Eigen3 REQUIRED COMPONENTS)
+# find_package(Eigen3 REQUIRED COMPONENTS)
 
-find_package(GSL REQUIRED COMPONENTS)
+# find_package(GSL REQUIRED COMPONENTS)
 
 add_subdirectory(lib/parser1)
 list(APPEND LIBS parser1)
@@ -46,5 +46,5 @@ list(APPEND LIBS hmm)
 file(GLOB_RECURSE SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_executable(${PROJECT_NAME} ${SRCS})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS} Eigen3::Eigen GSL::gsl Boost::boost)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBS} Boost::boost)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
