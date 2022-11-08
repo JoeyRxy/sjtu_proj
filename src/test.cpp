@@ -1,18 +1,18 @@
 #include <bits/stdc++.h>
-#include "hmm/hmm.hpp"
-#include "hmm/knn.hpp"
-#include "sjtu/loc_markov.hpp"
-#include "sjtu/location_map.hpp"
-#include "sjtu/max_a_posteri.hpp"
-#include "sjtu/util.hpp"
-
-#include "cout_color.hpp"
-#include "registry.hpp"
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/depth_first_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/johnson_all_pairs_shortest.hpp>
+
+#include "cout_color.hpp"
+#include "hmm/hmm.hpp"
+#include "hmm/knn.hpp"
+#include "registry.hpp"
+#include "sjtu/loc_markov.hpp"
+#include "sjtu/location_map.hpp"
+#include "sjtu/max_a_posteri.hpp"
+#include "sjtu/util.hpp"
 
 using namespace std;
 using namespace rxy;
@@ -68,18 +68,17 @@ inline void check_emission_prob(EmissionProb emission_prob) {
     }
 }
 
-inline void check_markov(MarkovPtr markov, std::list<LocationPtr> const & loc_ls) {
+inline void check_markov(MarkovPtr markov, std::list<LocationPtr> const& loc_ls) {
     for (auto it = loc_ls.begin(); it != loc_ls.end(); ++it) {
         cout << __color::bg_blu() << (*it)->point << __color::bg_def() << endl;
         for (auto jt = loc_ls.begin(); jt != loc_ls.end(); ++jt) {
             auto prob = *(*markov)(*it, *jt);
-            if (prob > 0.01)
-                cout << "\t-> " << (*jt)->point << ": " << prob << '\n';
+            if (prob > 0.01) cout << "\t-> " << (*jt)->point << ": " << prob << '\n';
         }
     }
 }
 
-RUN(procedure) {
+RUN_OFF(procedure) {
     string file = "../data/new/train.txt";
     string sensor_file = "../data/new/test_sensor.txt";
     string test_file = "../data/new/test.txt";
@@ -97,11 +96,11 @@ RUN(procedure) {
     std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
     load_data_aligned(test_file, test_data_aligned, pci_order);
 
-    for (auto & [loc, _] : test_data_aligned) {
+    for (auto& [loc, _] : test_data_aligned) {
         cout << loc_map.get_loc(loc)->point << endl;
     }
 
-    cout << " =================== "<< endl;
+    cout << " =================== " << endl;
 
     // ===== knn =====
     cout << __color::bg_blu() << "--- KNN ---" << __color::bg_def() << endl;
@@ -123,7 +122,7 @@ RUN(procedure) {
             knn_rmse += dist * dist;
         }
     }
-    
+
     cout << __color::bg_blu() << "--- HMM ---" << __color::bg_def() << endl;
 
     // ------ load data ------
@@ -162,15 +161,13 @@ RUN(procedure) {
         if (pred_locptr == nullptr) {
             cout << "pred_locptr is null" << endl;
         }
-        if (locptr->id == 
-            pred_locptr->id) {
+        if (locptr->id == pred_locptr->id) {
             ++cnt;
             cout << __color::gre() << "\t" << pred_locs[t]->point << __color::def() << endl;
         } else {
             double dist = minkowski(locations[t]->point, pred_locs[t]->point);
             cout << "\t" << __color::gre() << locations[t]->point << __color::def() << " vs. "
-                 << __color::red() << pred_locs[t]->point << __color::def() << ": "
-                 << dist << endl;
+                 << __color::red() << pred_locs[t]->point << __color::def() << ": " << dist << endl;
             rmse += dist * dist;
         }
     }
@@ -211,20 +208,18 @@ RUN_OFF(_map) {
     }
 }
 
-
 RUN_OFF(boost_graph_test) {
     using namespace boost;
-    using graph_t = boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-        LocationPtr,
-        boost::property<boost::edge_weight_t, double>>;
+    using graph_t = boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, LocationPtr,
+                                          boost::property<boost::edge_weight_t, double>>;
     std::size_t V = 5;
     graph_t g(V);
 
-    g[0] = std::make_shared<Location>(1, Point{1,2});
-    g[1] = std::make_shared<Location>(2, Point{3,4});
-    g[2] = std::make_shared<Location>(3, Point{5,6});
-    g[3] = std::make_shared<Location>(4, Point{7,8});
-    g[4] = std::make_shared<Location>(5, Point{9,10});
+    g[0] = std::make_shared<Location>(1, Point{1, 2});
+    g[1] = std::make_shared<Location>(2, Point{3, 4});
+    g[2] = std::make_shared<Location>(3, Point{5, 6});
+    g[3] = std::make_shared<Location>(4, Point{7, 8});
+    g[4] = std::make_shared<Location>(5, Point{9, 10});
 
     add_edge(0, 1, 1, g);
     add_edge(0, 2, 1.5, g);
@@ -244,7 +239,8 @@ RUN_OFF(boost_graph_test) {
     //     cout << *it << ": " << dist[*it] << endl;
     // }
 
-    std::vector<std::vector<double>> dist_matrix(V, std::vector<double>(V, std::numeric_limits<double>::max()));
+    std::vector<std::vector<double>> dist_matrix(
+        V, std::vector<double>(V, std::numeric_limits<double>::max()));
     johnson_all_pairs_shortest_paths(g, dist_matrix);
 
     for (size_t u = 0; u < V; ++u) {
@@ -254,5 +250,62 @@ RUN_OFF(boost_graph_test) {
         }
         cout << endl;
     }
-    
+}
+
+#include <OpenXLSX.hpp>
+
+RUN(OpenXLSX) {
+    using namespace OpenXLSX;
+    XLDocument doc;
+    doc.open("../data/db/F1.xlsx");
+
+    auto book = doc.workbook();
+    auto sheetname = book.worksheetNames().front();
+    cout << "sheetname: " << sheetname << endl;
+    auto sheet = book.worksheet(sheetname);
+    auto m = sheet.rowCount();
+    auto n = sheet.columnCount();
+    cout << "column count: " << n << endl;
+    cout << "row count: " << m << endl;
+
+    std::vector<decltype(n)> pci_idx_list;
+    pci_idx_list.reserve(10);
+    for (decltype(n) i = 1; i <= n; ++i) {
+        if (sheet.cell(1, i).value().get<std::string>().starts_with("NR_PCI")) {
+            pci_idx_list.push_back(i);
+        }
+    }
+
+    std::list<std::vector<std::pair<int, rsrp_t>>> data_list;
+
+    for (decltype(m) i = 2; i <= m; ++i) {
+        auto& back = data_list.emplace_back();
+        back.reserve(pci_idx_list.size());
+        for (auto j : pci_idx_list) {
+            int pci;
+            try {
+            pci = sheet.cell(i, j).value().get<int>();
+            } catch (XLException const&) {
+                continue;
+            }
+            cout << "<" << pci << ", ";
+            rsrp_t rsrp = -140;
+            try {
+                rsrp = sheet.cell(i, j + 1).value().get<rsrp_t>();
+            } catch (XLException const&) {
+            }
+            back.emplace_back(pci, rsrp);
+            cout << rsrp << ">, ";
+        }
+        cout << endl;
+    }
+
+    // for (decltype(m) i = 2; i <= m; ++i){
+    //     cout << '[';
+    //     for (decltype(n) j = 2; j <= n; ++j) {
+    //         XLCellReference cell_ref(i, "NR_PCI");
+    //         cout << sheet.cell(cell_ref).value().get<int>() << ", ";
+
+    //     }
+    // }
 }

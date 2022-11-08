@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <filesystem>
+#include <OpenXLSX.hpp>
 
 #include "line_parser/parser.h"
 #include "sjtu/max_a_posteri.hpp"
@@ -88,6 +90,40 @@ inline bool load_data_aligned(
     }
     in.close();
     return true;
+}
+
+inline bool load_data_aligned_xlsx(
+    std::string const& dir_path,
+    std::unordered_map<std::string, std::list<std::vector<rsrp_t>>>& loc_data_aligned,
+    std::unordered_map<int, int> const & pci_idx_map, rsrp_t default_rsrp = -140) {
+    std::filesystem::path dir(dir_path);
+    if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir)) {
+        std::cerr << "Invalid dir path" << std::endl;
+        return false;
+    }
+    using namespace OpenXLSX;
+    for (auto const& entry : std::filesystem::directory_iterator(dir)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".xlsx") {
+            auto& data_list = loc_data_aligned[entry.path().filename().string()];
+            XLDocument doc(entry.path().string());
+            auto book = doc.workbook();
+            auto sheet = book.worksheet(book.worksheetNames().front());
+            auto n = sheet.columnCount();
+            auto rows = sheet.rows();
+            auto it = rows.begin();
+            std::vector<decltype(n)> idx_list;
+            idx_list.reserve(10);
+            for (auto && cell : it->cells()) {
+                if (cell.value().get<std::string>().starts_with("NR_PCI")) {
+                    idx_list.push_back(cell.cellReference().column());
+                }
+            }
+            for (++it; it != rows.end(); ++it) {
+                auto& back = data_list.emplace_back();
+                back.resize(pci_idx_map.size(), default_rsrp);
+            }
+        }
+    }
 }
 
 namespace detail {
