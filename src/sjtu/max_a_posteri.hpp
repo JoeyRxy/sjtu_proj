@@ -15,7 +15,7 @@ class MaxAPosteri {
    public:
     MaxAPosteri(
         LocationMap const& loc_map,
-        std::unordered_map<int, std::unordered_map<int, std::list<rsrp_t>>> const& loc_pci_map) {
+        std::unordered_map<int, std::unordered_map<int, std::list<RSRP_TYPE>>> const& loc_pci_map) {
         for (auto&& [loc, pci_rsrp_map] : loc_pci_map) {
             auto& pci_stats = loc_pci_stats[loc_map.get_loc(loc)];
             for (auto&& [pci, rsrp_list] : pci_rsrp_map) {
@@ -28,7 +28,7 @@ class MaxAPosteri {
      *
      * */
     std::unordered_map<LocationPtr, Prob> operator()(
-        std::list<std::pair<int, rsrp_t>> const& X) const {
+        std::list<std::pair<int, RSRP_TYPE>> const& X) const {
         std::unordered_map<LocationPtr, Prob> loc_prob;
         for (auto const& [loc, pci_rsrp_map] : loc_pci_stats) {
             Prob p(0, true);

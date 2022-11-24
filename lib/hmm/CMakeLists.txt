@@ -6,6 +6,6 @@ project(hmm VERSION 1.0)
 
 file(GLOB HMMSRCS CONFIGURE_DEPENDS *.cpp)
 
-add_library(${PROJECT_NAME} ${HMMSRCS})
+add_library(${PROJECT_NAME} SHARED ${HMMSRCS})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hmm INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

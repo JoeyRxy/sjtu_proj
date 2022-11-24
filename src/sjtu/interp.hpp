@@ -12,15 +12,15 @@ namespace rxy {
 
 class ProbInterp {
    private:
-    std::unordered_map<Point, std::unordered_map<rsrp_t, Prob>> const& loc_prob_map;
-    std::unordered_map<Point, std::map<rsrp_t, Prob>>* points_to_interp;
+    std::unordered_map<Point, std::unordered_map<RSRP_TYPE, Prob>> const& loc_prob_map;
+    std::unordered_map<Point, std::map<RSRP_TYPE, Prob>>* points_to_interp;
     std::map<Point::value_type, int> x_map, y_map;
     std::vector<Point::value_type> x, y, z;
 
     gsl_spline2d* spline;
     gsl_interp_accel *x_acc, *y_acc;
 
-    void dfs(std::unordered_map<Point, std::unordered_map<rsrp_t, Prob>>::const_iterator iter,
+    void dfs(std::unordered_map<Point, std::unordered_map<RSRP_TYPE, Prob>>::const_iterator iter,
              Prob _prob) {
         if (iter == loc_prob_map.end()) {
             gsl_spline2d_init(spline, x.data(), y.data(), z.data(), x.size(), y.size());
@@ -39,7 +39,7 @@ class ProbInterp {
     }
 
    public:
-    ProbInterp(std::unordered_map<Point, std::unordered_map<rsrp_t, Prob>> const& loc_prob_map,
+    ProbInterp(std::unordered_map<Point, std::unordered_map<RSRP_TYPE, Prob>> const& loc_prob_map,
                bool use_cubic = true)
         : loc_prob_map(loc_prob_map) {
         std::size_t sz = 1;
@@ -82,7 +82,7 @@ class ProbInterp {
         y_acc = gsl_interp_accel_alloc();
     }
 
-    void operator()(std::unordered_map<Point, std::map<rsrp_t, Prob>>& points_to_interp) {
+    void operator()(std::unordered_map<Point, std::map<RSRP_TYPE, Prob>>& points_to_interp) {
         this->points_to_interp = &points_to_interp;
         dfs(loc_prob_map.begin(), 1.0);
     }

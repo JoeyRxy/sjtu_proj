@@ -16,19 +16,19 @@ void LocMarkov::__init() {
     std::cout << "start Markov computing..." << std::endl;
 #endif
 
-    for (auto && loc : loc_map.get_ext_list()) {
+    for (LocationPtr loc : loc_map.get_ext_list()) {
         Point new_point = loc->point + delta;
         auto & Mi = _tran_prob[loc];
         Mi.reserve(N);
         LocationPtr new_loc;
         if (!loc_map.check(new_point) || !(new_loc = loc_map.get_ext_loc(new_point))) {
-            for (auto && dest : loc_map.get_ext_list()) {
+            for (LocationPtr dest : loc_map.get_ext_list()) {
                 Mi.emplace(dest, Prob::ZERO);
             }
             continue;
         }
         
-        for (auto && dest : loc_map.get_ext_list()) {
+        for (LocationPtr dest : loc_map.get_ext_list()) {
             Mi.emplace(dest, log_nd_pdf(loc_map.distance(loc, new_loc)));
         }
     }

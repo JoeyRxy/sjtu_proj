@@ -8,7 +8,7 @@
 
 namespace rxy {
 
-class Location;
+struct Location;
 using LocationPtr = std::shared_ptr<Location>;
 
 class Point {

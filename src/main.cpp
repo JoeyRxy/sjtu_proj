@@ -32,7 +32,7 @@ Point rightward = {2, 0};
 Point stop = {0, 0};
 
 auto load_original_data(string const& file) {
-    unordered_map<int, unordered_map<int, list<rsrp_t>>> loc_pci_map;
+    unordered_map<int, unordered_map<int, list<RSRP_TYPE>>> loc_pci_map;
     if (load_data(file, loc_pci_map)) {
         cout << "load data success" << endl;
     } else {
@@ -70,7 +70,7 @@ inline bool get_emission_prob_using_map(std::string const& file, LocationMap con
             locations.reserve(T);
         }
         for (auto&& cell_info : parser.get()) {
-            std::list<std::pair<int, rsrp_t>> pci_rsrp_list;
+            std::list<std::pair<int, RSRP_TYPE>> pci_rsrp_list;
             for (auto&& [pci, info] : cell_info.pci_info_list) {
                 pci_rsrp_list.emplace_back(pci, info->rsrp);
             }

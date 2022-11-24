@@ -5,6 +5,6 @@ project(parser1 VERSION 1.0)
 file(GLOB PARSER_SRCS CONFIGURE_DEPENDS *.cpp)
 
 
-add_library(${PROJECT_NAME} ${PARSER_SRCS})
+add_library(${PROJECT_NAME} SHARED ${PARSER_SRCS})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/line_parser INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -17,7 +17,7 @@
 using namespace std;
 using namespace rxy;
 
-unordered_map<int, unordered_map<int, list<rsrp_t>>> load_original_data(string const& file);
+unordered_map<int, unordered_map<int, list<RSRP_TYPE>>> load_original_data(string const& file);
 
 LocationMap load_loc_map();
 
@@ -29,7 +29,7 @@ RUN_OFF(knn) {
     auto knn = get_knn(file, pci_order);
     int total = 0, cnt = 0;
     string test_file = "../data/new/test.txt";
-    std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
+    std::list<std::pair<int, std::vector<RSRP_TYPE>>> test_data_aligned;
     if (load_data_aligned(test_file, test_data_aligned, pci_order)) {
         cout << "load test data success" << endl;
     } else {
@@ -78,10 +78,10 @@ inline void check_markov(MarkovPtr markov, std::list<LocationPtr> const& loc_ls)
     }
 }
 
-RUN_OFF(procedure) {
-    string file = "../data/new/train.txt";
-    string sensor_file = "../data/new/test_sensor.txt";
-    string test_file = "../data/new/test.txt";
+RUN(procedure) {
+    string file = "../data/train.txt";
+    string sensor_file = "../data/test_sensor.txt";
+    string test_file = "../data/test.txt";
 
     int top_k = 3000;
 
@@ -93,7 +93,7 @@ RUN_OFF(procedure) {
     // check_markov(markovs[0], loc_map.get_loc_set());
     int T = markovs.size() + 1;
     auto knn = get_knn(file, pci_order, top_k);
-    std::list<std::pair<int, std::vector<rsrp_t>>> test_data_aligned;
+    std::list<std::pair<int, std::vector<RSRP_TYPE>>> test_data_aligned;
     load_data_aligned(test_file, test_data_aligned, pci_order);
 
     for (auto& [loc, _] : test_data_aligned) {
@@ -181,7 +181,7 @@ RUN_OFF(procedure) {
 RUN_OFF(_map) {
     string file = "../data/train.txt";
     auto loc_map = load_loc_map();
-    unordered_map<int, unordered_map<int, list<rsrp_t>>> loc_pci_map;
+    unordered_map<int, unordered_map<int, list<RSRP_TYPE>>> loc_pci_map;
     if (load_data(file, loc_pci_map)) {
         cout << "load data success" << endl;
     } else {
@@ -189,7 +189,7 @@ RUN_OFF(_map) {
     }
     MaxAPosteri __map(loc_map, loc_pci_map);
     for (auto&& [loc, pci_rsrp_list] : loc_pci_map) {
-        list<pair<int, rsrp_t>> rsrp_list;
+        list<pair<int, RSRP_TYPE>> rsrp_list;
         for (auto&& [pci, rsrps] : pci_rsrp_list) {
             for (auto&& rsrp : rsrps) {
                 rsrp_list.emplace_back(pci, rsrp);
@@ -254,7 +254,7 @@ RUN_OFF(boost_graph_test) {
 
 #include <OpenXLSX.hpp>
 
-RUN(OpenXLSX) {
+RUN_OFF(OpenXLSX) {
     using namespace OpenXLSX;
     XLDocument doc;
     doc.open("../data/db/F1.xlsx");
@@ -276,7 +276,7 @@ RUN(OpenXLSX) {
         }
     }
 
-    std::list<std::vector<std::pair<int, rsrp_t>>> data_list;
+    std::list<std::vector<std::pair<int, RSRP_TYPE>>> data_list;
 
     for (decltype(m) i = 2; i <= m; ++i) {
         auto& back = data_list.emplace_back();
@@ -289,9 +289,9 @@ RUN(OpenXLSX) {
                 continue;
             }
             cout << "<" << pci << ", ";
-            rsrp_t rsrp = -140;
+            RSRP_TYPE rsrp = -140;
             try {
-                rsrp = sheet.cell(i, j + 1).value().get<rsrp_t>();
+                rsrp = sheet.cell(i, j + 1).value().get<RSRP_TYPE>();
             } catch (XLException const&) {
             }
             back.emplace_back(pci, rsrp);
@@ -299,13 +299,45 @@ RUN(OpenXLSX) {
         }
         cout << endl;
     }
+}
 
-    // for (decltype(m) i = 2; i <= m; ++i){
-    //     cout << '[';
-    //     for (decltype(n) j = 2; j <= n; ++j) {
-    //         XLCellReference cell_ref(i, "NR_PCI");
-    //         cout << sheet.cell(cell_ref).value().get<int>() << ", ";
+RUN_OFF(procedure2) {
+    string dir_path = "/home/rxy/sjtu_proj/data/db";
+    unordered_map<string, list<vector<RSRP_TYPE>>> loc_data_map;
+    unordered_map<string, int> loc_idx_map;
+    unordered_map<int, int> pci_idx_map;
+    {
+        int idx = 0;
+        for (auto&& [loc, _] : loc_data_map) {
+            loc_idx_map[loc] = idx++;
+        }
+        
+        vector<int> pci_list{281,444, 445,468,469,790,792,793,821,843,844};
 
-    //     }
-    // }
+        for (size_t i = 0; i < pci_list.size(); ++i) {
+            pci_idx_map[pci_list[i]] = i;
+        }
+        if (!load_data_aligned_xlsx(dir_path, loc_data_map, pci_idx_map)) {
+            throw std::runtime_error("load data failed");
+        }
+    }
+    int topk = 300;
+    KNN<RSRP_TYPE> knn{topk, KNN<RSRP_TYPE>::distance_inv_weighted_euc};
+    {
+        vector<vector<RSRP_TYPE>> data;
+        vector<int> labels;
+        size_t n = accumulate(loc_data_map.begin(), loc_data_map.end(), 0,
+                              [](size_t acc, auto&& p) { return acc + p.second.size(); });
+
+        data.reserve(n);
+        labels.reserve(n);
+        for (auto&& [loc, data_list] : loc_data_map) {
+            data.insert(data.end(), data_list.begin(), data_list.end());
+            labels.insert(labels.end(), data_list.size(), loc_idx_map[loc]);
+        }
+        knn.train(data, labels);
+    }
+
+    
+    
 }

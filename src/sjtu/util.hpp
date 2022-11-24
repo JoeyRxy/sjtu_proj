@@ -13,16 +13,19 @@
 #include <filesystem>
 #include <OpenXLSX.hpp>
 
+#include "hmm/emission_prob.hpp"
+#include "hmm/knn.hpp"
+#include "hmm/markov.hpp"
+#include "hmm/sensation.hpp"
+#include "sjtu/loc_markov.hpp"
 #include "line_parser/parser.h"
 #include "sjtu/max_a_posteri.hpp"
 
 namespace rxy {
 
-using rsrp_t = RSRP_TYPE;
-
 inline bool load_data(
     std::string const& file,
-    std::unordered_map<int, std::unordered_map<int, std::list<rsrp_t>>>& loc_pci_map) {
+    std::unordered_map<int, std::unordered_map<int, std::list<RSRP_TYPE>>>& loc_pci_map) {
     std::ifstream in(file);
     if (in.fail()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -57,8 +60,8 @@ inline bool load_data(
  * */
 inline bool load_data_aligned(
     std::string const& file,
-    std::list<std::pair<int, std::vector<rsrp_t>>>& loc_data_aligned,
-    std::vector<int> const& pci_order, rsrp_t default_rsrp = -140) {
+    std::list<std::pair<int, std::vector<RSRP_TYPE>>>& loc_data_aligned,
+    std::vector<int> const& pci_order, RSRP_TYPE default_rsrp = -140) {
     std::ifstream in(file);
     if (in.fail()) {
         std::cerr << "Failed to open file" << std::endl;
@@ -75,7 +78,7 @@ inline bool load_data_aligned(
         for (auto const& cellinfo : parser.get()) {
             // auto& rsrp_aligned =
             //     loc_data_aligned[cellinfo.loc].emplace_back(pci_order.size(), default_rsrp);
-            std::vector<rsrp_t> rsrp_aligned(pci_order.size(), default_rsrp);
+            std::vector<RSRP_TYPE> rsrp_aligned(pci_order.size(), default_rsrp);
             for (auto&& [pci, rsrp] : cellinfo.pci_info_list) {
                 try {
                     rsrp_aligned[idx_map.at(pci)] = rsrp->rsrp;
@@ -94,8 +97,8 @@ inline bool load_data_aligned(
 
 inline bool load_data_aligned_xlsx(
     std::string const& dir_path,
-    std::unordered_map<std::string, std::list<std::vector<rsrp_t>>>& loc_data_aligned,
-    std::unordered_map<int, int> const & pci_idx_map, rsrp_t default_rsrp = -140) {
+    std::unordered_map<std::string, std::list<std::vector<RSRP_TYPE>>>& loc_data_aligned,
+    std::unordered_map<int, int> const & pci_idx_map, RSRP_TYPE default_rsrp = -140) {
     std::filesystem::path dir(dir_path);
     if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir)) {
         std::cerr << "Invalid dir path" << std::endl;
@@ -104,34 +107,49 @@ inline bool load_data_aligned_xlsx(
     using namespace OpenXLSX;
     for (auto const& entry : std::filesystem::directory_iterator(dir)) {
         if (entry.is_regular_file() && entry.path().extension() == ".xlsx") {
-            auto& data_list = loc_data_aligned[entry.path().filename().string()];
+            auto name = entry.path().filename().string();
+            auto& data_list = loc_data_aligned[name.substr(0, name.find('.'))];
             XLDocument doc(entry.path().string());
             auto book = doc.workbook();
             auto sheet = book.worksheet(book.worksheetNames().front());
+            auto m = sheet.rowCount();
             auto n = sheet.columnCount();
-            auto rows = sheet.rows();
-            auto it = rows.begin();
             std::vector<decltype(n)> idx_list;
             idx_list.reserve(10);
-            for (auto && cell : it->cells()) {
-                if (cell.value().get<std::string>().starts_with("NR_PCI")) {
-                    idx_list.push_back(cell.cellReference().column());
+            for (decltype(n) i = 1; i <= n; ++i) {
+                if (sheet.cell(1, i).value().get<std::string>().starts_with("NR_PCI")) {
+                    idx_list.push_back(i);
                 }
             }
-            for (++it; it != rows.end(); ++it) {
-                auto& back = data_list.emplace_back();
-                back.resize(pci_idx_map.size(), default_rsrp);
+            for (decltype(m) i = 2; i <= m; ++i) {
+                std::vector<RSRP_TYPE> rsrp_aligned(pci_idx_map.size(), default_rsrp);
+                for (auto&& idx : idx_list) {
+                    int pci;
+                    RSRP_TYPE rsrp;
+                    try {
+                        pci = sheet.cell(i, idx).value().get<int>();
+                        rsrp = sheet.cell(i, idx + 1).value().get<RSRP_TYPE>();
+                    } catch (XLException const &) {
+                        continue;
+                    }
+                    try {
+                        rsrp_aligned[pci_idx_map.at(pci)] = rsrp;
+                    } catch (std::out_of_range&) {
+                    }
+                }
+                data_list.emplace_back(std::move(rsrp_aligned));
             }
         }
     }
+    return true;
 }
 
 namespace detail {
 
-inline void __get_train_test_data_helper(std::vector<std::pair<int, std::vector<rsrp_t>>>&& X,
-                                  std::vector<std::vector<rsrp_t>>& X_train,
+inline void __get_train_test_data_helper(std::vector<std::pair<int, std::vector<RSRP_TYPE>>>&& X,
+                                  std::vector<std::vector<RSRP_TYPE>>& X_train,
                                   std::vector<int>& y_train,
-                                  std::vector<std::vector<rsrp_t>>& X_test,
+                                  std::vector<std::vector<RSRP_TYPE>>& X_test,
                                   std::vector<int>& y_test, double _split_ratio = 0.8) {
     std::random_device rd;
     std::mt19937 g(rd());
@@ -154,16 +172,16 @@ inline void __get_train_test_data_helper(std::vector<std::pair<int, std::vector<
 }  // namespace detail
 
 inline auto get_train_test_data(
-    std::list<std::pair<int, std::vector<rsrp_t>>>const& loc_data_aligned,
+    std::list<std::pair<int, std::vector<RSRP_TYPE>>>const& loc_data_aligned,
     double _split_ratio = 0.8) {
-    std::vector<std::pair<int, std::vector<rsrp_t>>> X;
+    std::vector<std::pair<int, std::vector<RSRP_TYPE>>> X;
     X.reserve(loc_data_aligned.size());
     for (auto& p : loc_data_aligned) {
         X.emplace_back(p);
     }
-    std::vector<std::vector<rsrp_t>> X_train;
+    std::vector<std::vector<RSRP_TYPE>> X_train;
     std::vector<int> y_train;
-    std::vector<std::vector<rsrp_t>> X_test;
+    std::vector<std::vector<RSRP_TYPE>> X_test;
     std::vector<int> y_test;
     detail::__get_train_test_data_helper(std::move(X), X_train, y_train, X_test, y_test,
                                          _split_ratio);
@@ -172,16 +190,16 @@ inline auto get_train_test_data(
 }
 
 inline auto get_train_test_data(
-    std::list<std::pair<int, std::vector<rsrp_t>>>&& loc_data_aligned,
+    std::list<std::pair<int, std::vector<RSRP_TYPE>>>&& loc_data_aligned,
     double _split_ratio = 0.8) {
-    std::vector<std::pair<int, std::vector<rsrp_t>>> X;
+    std::vector<std::pair<int, std::vector<RSRP_TYPE>>> X;
     X.reserve(loc_data_aligned.size());
     for (auto& p : loc_data_aligned) {
         X.emplace_back(std::move(p));
     }
-    std::vector<std::vector<rsrp_t>> X_train;
+    std::vector<std::vector<RSRP_TYPE>> X_train;
     std::vector<int> y_train;
-    std::vector<std::vector<rsrp_t>> X_test;
+    std::vector<std::vector<RSRP_TYPE>> X_test;
     std::vector<int> y_test;
     detail::__get_train_test_data_helper(std::move(X), X_train, y_train, X_test, y_test,
                                          _split_ratio);
@@ -190,7 +208,7 @@ inline auto get_train_test_data(
 }
 
 inline std::set<int> get_pci_set(
-    std::unordered_map<int, std::unordered_map<int, std::list<rsrp_t>>> const& loc_pci_map) {
+    std::unordered_map<int, std::unordered_map<int, std::list<RSRP_TYPE>>> const& loc_pci_map) {
     std::set<int> pci_set;
     for (auto&& [_, pci_rsrp_map] : loc_pci_map) {
         for (auto&& [pci, _] : pci_rsrp_map) {
@@ -201,7 +219,7 @@ inline std::set<int> get_pci_set(
 }
 
 inline std::map<int, int> get_pci_map(
-    std::unordered_map<int, std::unordered_map<int, std::list<rsrp_t>>> const& loc_pci_map) {
+    std::unordered_map<int, std::unordered_map<int, std::list<RSRP_TYPE>>> const& loc_pci_map) {
     std::map<int, int> pci_map;
     for (auto&& [_, pci_rsrp_map] : loc_pci_map) {
         for (auto&& [pci, _] : pci_rsrp_map) {
@@ -216,7 +234,7 @@ inline std::map<int, int> get_pci_map(
  * */
 template <typename InputIterator>
 requires std::input_iterator<InputIterator> &&
-    std::same_as<typename std::iterator_traits<InputIterator>::value_type, rsrp_t>
+    std::same_as<typename std::iterator_traits<InputIterator>::value_type, RSRP_TYPE>
 inline std::pair<double, double> get_mean_var(InputIterator begin, InputIterator end, int n = -1,
                                               bool compute_min = true) {
     if (n == -1) n = std::distance(begin, end);
@@ -231,7 +249,7 @@ inline std::pair<double, double> get_mean_var(InputIterator begin, InputIterator
         return {mean, variance};
     } else {
         double sum = std::accumulate(
-            begin, end, 0, [](rsrp_t sum, rsrp_t rsrp) { return rsrp == -140 ? sum : sum + rsrp; });
+            begin, end, 0, [](RSRP_TYPE sum, RSRP_TYPE rsrp) { return rsrp == -140 ? sum : sum + rsrp; });
         double mean = sum / n;
         sum = std::accumulate(begin, end, 0, [mean](double sum, double rsrp) {
             return rsrp == -140 ? sum : sum + (rsrp - mean) * (rsrp - mean);
@@ -241,13 +259,13 @@ inline std::pair<double, double> get_mean_var(InputIterator begin, InputIterator
     }
 }
 
-inline KNN<rsrp_t> get_knn(std::string const& file, std::vector<int> const& pci_order, int top_k = 300) {
-    std::list<std::pair<int, std::vector<rsrp_t>>> loc_data_aligned;
-    KNN<rsrp_t> knn(top_k, KNN<rsrp_t>::distance_inv_weighted_euc);
+inline KNN<RSRP_TYPE> get_knn(std::string const& file, std::vector<int> const& pci_order, int top_k = 300) {
+    std::list<std::pair<int, std::vector<RSRP_TYPE>>> loc_data_aligned;
+    KNN<RSRP_TYPE> knn(top_k, KNN<RSRP_TYPE>::distance_inv_weighted_euc);
     if (load_data_aligned(file, loc_data_aligned, pci_order)) {
         std::cout << "load data success" << std::endl;
         // auto data = get_train_test_data(loc_data_aligned, 1.);
-        std::vector<std::vector<rsrp_t>> data;
+        std::vector<std::vector<RSRP_TYPE>> data;
         std::vector<int> labels;
         data.reserve(loc_data_aligned.size());
         labels.reserve(loc_data_aligned.size());
@@ -310,7 +328,7 @@ inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_m
 }
 
 inline void get_emission_prob_using_knn(
-    std::list<std::pair<int, std::vector<rsrp_t>>> const& test_data_aligned, KNN<rsrp_t> const& knn,
+    std::list<std::pair<int, std::vector<RSRP_TYPE>>> const& test_data_aligned, KNN<RSRP_TYPE> const& knn,
     LocationMap const& loc_map, std::vector<EmissionProb>& emission_probs,
     std::vector<LocationPtr>& locations, int T = -1) {
     if (T != -1) {

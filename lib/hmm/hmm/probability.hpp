@@ -70,7 +70,7 @@ inline constexpr bool operator<=(Prob const &lhs, Prob const &rhs) { return lhs.
 inline constexpr bool operator>(Prob const &lhs, Prob const &rhs) { return lhs.prob > rhs.prob; }
 inline constexpr bool operator>=(Prob const &lhs, Prob const &rhs) { return lhs.prob >= rhs.prob; }
 
-static constexpr Prob::value_type INV_SQRT_PI = 1. / std::sqrt(2 * 3.141592653589793238462643383279502884L);
+static const Prob::value_type INV_SQRT_PI = 1. / std::sqrt(2 * 3.141592653589793238462643383279502884L);
 
 inline constexpr Prob nd_pdf(Prob::value_type const x, Prob::value_type mu, Prob::value_type sigma) {
     if (sigma == 0) return x == mu;
@@ -81,7 +81,7 @@ inline constexpr Prob nd_pdf(Prob::value_type const x, Prob::value_type mu, Prob
     return t * std::exp(r);
 }
 
-static constexpr Prob::value_type INV_SQRT_PI_LOG = -0.5 * std::log(2 * 3.141592653589793238462643383279502884L);
+static const Prob::value_type INV_SQRT_PI_LOG = -0.5 * std::log(2 * 3.141592653589793238462643383279502884L);
 
 inline constexpr Prob log_nd_pdf(Prob::value_type const x, Prob::value_type const mu, Prob::value_type const sigma) {
     if (sigma == 0) return x == mu;
@@ -92,9 +92,9 @@ inline constexpr Prob log_nd_pdf(Prob::value_type const x, Prob::value_type cons
     return {r, true};
 }
 
-static constexpr Prob::value_type INV_SQRT_PI_SIGMA_LOG = INV_SQRT_PI_LOG - std::log(ND_SIGMA);
+static const Prob::value_type INV_SQRT_PI_SIGMA_LOG = INV_SQRT_PI_LOG - std::log(ND_SIGMA);
 
-inline constexpr Prob log_nd_pdf(Prob::value_type const x) {
+inline Prob log_nd_pdf(Prob::value_type const x) {
     Prob::value_type y = (x - ND_MU) / ND_SIGMA;
     Prob::value_type r = INV_SQRT_PI_SIGMA_LOG - 0.5 * y * y;
     return {r, true};

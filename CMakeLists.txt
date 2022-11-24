@@ -43,7 +43,7 @@ list(APPEND LIBS parser1)
 add_subdirectory(lib/hmm)
 list(APPEND LIBS hmm)
 
-add_subdirectory(OpenXLSX)
+add_subdirectory(lib/OpenXLSX)
 list(APPEND LIBS OpenXLSX::OpenXLSX)
 
 file(GLOB_RECURSE SRCS LIST_DIRECTORIES false CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")

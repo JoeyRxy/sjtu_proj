@@ -43,7 +43,8 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
     if (emission_probs[0].size() != N) throw std::runtime_error("emission_probs[0].size() != N");
     // T is the number of time steps
     auto T = emission_probs.size();
-    if (T == 0 || !(markovs.size() == T - 1)) throw std::runtime_error("T == 0 OR markovs.size() != T - 1");
+    if (T == 0) throw std::runtime_error("T == 0");
+    if (markovs.size() != T - 1) throw std::runtime_error("markovs.size() != T - 1");
     std::unordered_map<LocationPtr, Prob> prv, cur;
     prv.reserve(N);
     cur.reserve(N);
