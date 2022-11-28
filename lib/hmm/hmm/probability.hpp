@@ -38,18 +38,18 @@ struct Prob {
         return *this;
     }
 
-    constexpr value_type operator*() const { return std::exp(prob); }
+    value_type operator*() const { return std::exp(prob); }
 
 };
 
 inline const Prob Prob::ZERO;
 inline const Prob Prob::ONE(0, true);
 
-inline constexpr Prob operator*(Prob const &lhs, Prob const &rhs) { return Prob(lhs.prob + rhs.prob, true); }
+inline Prob operator*(Prob const &lhs, Prob const &rhs) { return Prob(lhs.prob + rhs.prob, true); }
 
-inline constexpr Prob operator/(Prob const &lhs, Prob const &rhs) { return Prob(lhs.prob - rhs.prob, true); }
+inline Prob operator/(Prob const &lhs, Prob const &rhs) { return Prob(lhs.prob - rhs.prob, true); }
 
-inline constexpr Prob operator+(Prob const &lhs, Prob const &rhs) { 
+inline Prob operator+(Prob const &lhs, Prob const &rhs) { 
     Prob ret(lhs);
     ret += rhs;
     return ret; 

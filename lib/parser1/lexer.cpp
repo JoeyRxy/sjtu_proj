@@ -62,7 +62,7 @@ void Lexer::next() {
             _col += 2;
         } else {
             in.putback(ch);
-            int pos = _col;
+            auto pos = _col;
             double x = next_number();
             if (x == (int)x) {
                 token = std::make_shared<Number>(x, _col - pos);
@@ -73,7 +73,7 @@ void Lexer::next() {
         return;
     }
     if (in.peek() == '-') {
-        int pos = _col;
+        auto pos = _col;
         ++_col;
         in.get();
         while (in.good() && in.peek() == ' ') {

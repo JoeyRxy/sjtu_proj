@@ -9,7 +9,7 @@ namespace rxy {
 
 void LocMarkov::__init() {
     auto& delta = sense.delta();
-    int N = loc_map.get_ext_dict().size();
+    auto N = loc_map.get_ext_dict().size();
     _tran_prob.reserve(N);
 
 #ifdef DEBUG

@@ -104,8 +104,9 @@
 		"cmake.statusbar.visibility": "compact",
 		"cmake.statusbar.advanced": {
 			"kit": {
-				"length": 4
+				"length": 6
 			}
-		}
-	}
+		},
+	},
+	
 }

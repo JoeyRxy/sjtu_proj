@@ -62,7 +62,7 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
         throw std::runtime_error("all zero for start");
     }
     std::vector<LocationPtr> ret(T);
-    int start = 0;
+    size_t start = 0;
     for (size_t t = 1; t < T; ++t) {
         auto const& markov = *markovs[t - 1];
         std::swap(prv, cur);
@@ -97,7 +97,7 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
                     }
                 }
                 ret[t - 1] = max_loc;
-                for (int _t = t - 2; _t >= start; --_t) {
+                for (auto _t = t - 2; _t >= start; --_t) {
                     ret[_t] = psi[_t][ret[_t + 1]];
                 }
                 start = t;
@@ -124,7 +124,7 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
         }
     }
     ret[T - 1] = max_loc;
-    for (int t = T - 2; t >= start; --t) {
+    for (auto t = T - 2; t >= start; --t) {
         ret[t] = psi[t][ret[t + 1]];
     }
     return ret;

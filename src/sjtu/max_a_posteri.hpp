@@ -19,7 +19,7 @@ class MaxAPosteri {
         for (auto&& [loc, pci_rsrp_map] : loc_pci_map) {
             auto& pci_stats = loc_pci_stats[loc_map.get_loc(loc)];
             for (auto&& [pci, rsrp_list] : pci_rsrp_map) {
-                pci_stats[pci] = get_mean_var(rsrp_list.begin(), rsrp_list.end(), rsrp_list.size());
+                pci_stats[pci] = get_mean_var(rsrp_list.begin(), rsrp_list.end(), static_cast<int>(rsrp_list.size()));
             }
         }
     }

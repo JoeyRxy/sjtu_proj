@@ -10,7 +10,7 @@ using TokenPtr = std::shared_ptr<Token>;
 
 struct Token {
     std::string str;
-    int len;
+    size_t len;
     Token() = default;
     Token(std::string&& str) : str(std::move(str)), len(str.size()) {}
     Token(std::string&& str, int len) : str(std::move(str)), len(len) {}
@@ -55,8 +55,8 @@ class Lexer {
     TokenPtr peek() const { return token; }
     void next();
 
-    int line() const { return _line; }
-    int col() const {
+    size_t line() const { return _line; }
+    size_t col() const {
         if (token)
             return _col - token->str.size();
         else

@@ -9,6 +9,7 @@
 #include <iostream>
 #endif
 
+#include <config.h>
 #include "ext_loc.hpp"
 #include "hmm/location.hpp"
 #include "hmm/probability.hpp"
@@ -41,13 +42,13 @@ class LocationMap {
         dist_map;
 
     void __init() {
-        if (!(m > 1 && m <= MAP_SIZE && n > 1 && n <= MAP_SIZE))
+        if (!(m > 1 && m <= GetConfig().map_size && n > 1 && n <= GetConfig().map_size))
             throw std::runtime_error("invalid argument");
         if (!(right_up.x() > left_down.x() && right_up.y() > left_down.y()))
             throw std::runtime_error("invalid argument");
         x_step = (right_up.x() - left_down.x()) / m;
         y_step = (right_up.y() - left_down.y()) / n;
-        if (!(1 - std::min(x_step, y_step) / std::max(x_step, y_step) < ECCENTRICITY))
+        if (!(1 - std::min(x_step, y_step) / std::max(x_step, y_step) < GetConfig().ecc))
             throw std::runtime_error("invalid argument");
         x_ratio = 1.0 / x_step;
         y_ratio = 1.0 / y_step;
@@ -55,10 +56,10 @@ class LocationMap {
 
         loc_dict.reserve(m * n);
 
-        x_step_ext = x_step / EXT_RATE, y_step_ext = y_step / EXT_RATE;
+        x_step_ext = x_step / GetConfig().ext_rate, y_step_ext = y_step / GetConfig().ext_rate;
         x_ratio_ext = 1.0 / x_step_ext, y_ratio_ext = 1.0 / y_step_ext;
 
-        m_ext = m * EXT_RATE, n_ext = n * EXT_RATE;
+        m_ext = m * GetConfig().ext_rate, n_ext = n * GetConfig().ext_rate;
         ext_map.resize(m_ext, std::vector<LocationPtr>(n_ext));
         ext_dict.reserve(m_ext * n_ext);
 
@@ -106,14 +107,14 @@ class LocationMap {
         if (loc_map[i][j] == nullptr) {
             if (id != -1 && loc_dict.find(id) != loc_dict.end())
                 throw std::runtime_error("duplicate id");
-            if (id == -1) id = loc_set.size();
+            if (id == -1) id = static_cast<int>(loc_set.size());
             loc_map[i][j] =
                 std::make_shared<Location>(id, Point{left_down.x() + i * x_step + x_step / 2,
                                                      left_down.y() + j * y_step + y_step / 2});
             loc_dict[id] = std::make_pair(i, j);
             loc_set.emplace_back(loc_map[i][j]);
-            int line_begin = EXT_RATE * i, line_end = EXT_RATE + line_begin;
-            int col_begin = EXT_RATE * j, col_end = EXT_RATE + col_begin;
+            int line_begin = GetConfig().ext_rate * i, line_end = GetConfig().ext_rate + line_begin;
+            int col_begin = GetConfig().ext_rate * j, col_end = GetConfig().ext_rate + col_begin;
             for (int x = line_begin; x < line_end; ++x) {
                 for (int y = col_begin; y < col_end; ++y) {
                     auto ptr = std::make_shared<ExtLocation>(
@@ -133,8 +134,8 @@ class LocationMap {
 
     void tranverse(int i, int j, std::function<void(LocationPtr)> const& func) {
         if (!(check(i, j))) throw std::runtime_error("invalid argument");
-        int line_begin = EXT_RATE * i, line_end = EXT_RATE + line_begin;
-        int col_begin = EXT_RATE * j, col_end = EXT_RATE + col_begin;
+        int line_begin = GetConfig().ext_rate * i, line_end = GetConfig().ext_rate + line_begin;
+        int col_begin = GetConfig().ext_rate * j, col_end = GetConfig().ext_rate + col_begin;
         for (int k = line_begin; k < line_end; ++k) {
             for (int l = col_begin; l < col_end; ++l) {
                 if (ext_map[k][l]) func(ext_map[k][l]);
@@ -221,14 +222,14 @@ class LocationMap {
     }
 
     auto get_loc(Point const& point) const {
-        int i = (point.x() - left_down.x()) * x_ratio;
-        int j = (point.y() - left_down.y()) * y_ratio;
+        int i = static_cast<int>((point.x() - left_down.x()) * x_ratio);
+        int j = static_cast<int>((point.y() - left_down.y()) * y_ratio);
         return loc_map.at(i).at(j);
     }
 
     auto get_ext_loc(Point const& point) const {
-        int i = (point.x() - left_down.x()) * x_ratio_ext;
-        int j = (point.y() - left_down.y()) * y_ratio_ext;
+        int i = static_cast<int>((point.x() - left_down.x()) * x_ratio_ext);
+        int j = static_cast<int>((point.y() - left_down.y()) * y_ratio_ext);
         return ext_map.at(i).at(j);
     }
 

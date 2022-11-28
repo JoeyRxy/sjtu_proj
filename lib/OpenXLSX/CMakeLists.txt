@@ -31,7 +31,7 @@ set(IGNORE_ME ${CMAKE_C_COMPILER}) # Suppress CMake warning message
 # Add build options
 #=======================================================================================================================
 option(OPENXLSX_COMPACT_MODE "Build library in compact mode (slower, but uses less memory)" OFF)
-set(OPENXLSX_LIBRARY_TYPE "SHARED" CACHE STRING "Set the library type to SHARED or STATIC")
+set(OPENXLSX_LIBRARY_TYPE "STATIC" CACHE STRING "Set the library type to SHARED or STATIC")
 
 #=======================================================================================================================
 # EXTERNAL LIBRARIES
@@ -142,6 +142,8 @@ endif ()
 #   Define the shared library
 #=======================================================================================================================
 if (${OPENXLSX_LIBRARY_TYPE} STREQUAL "SHARED")
+    set(WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
     add_library(OpenXLSX SHARED "")
     add_library(OpenXLSX::OpenXLSX ALIAS OpenXLSX)
     target_sources(OpenXLSX PRIVATE ${OPENXLSX_SOURCES})

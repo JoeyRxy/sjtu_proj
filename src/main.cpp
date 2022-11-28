@@ -31,7 +31,7 @@ Point leftward = {-2, 0};
 Point rightward = {2, 0};
 Point stop = {0, 0};
 
-auto load_original_data(string const& file) {
+unordered_map<int, unordered_map<int, list<RSRP_TYPE>>> load_original_data(string const& file) {
     unordered_map<int, unordered_map<int, list<RSRP_TYPE>>> loc_pci_map;
     if (load_data(file, loc_pci_map)) {
         cout << "load data success" << endl;
@@ -41,7 +41,7 @@ auto load_original_data(string const& file) {
     return loc_pci_map;
 }
 
-auto load_loc_map() {
+LocationMap load_loc_map() {
     int m = 10, n = 15;
     LocationMap loc_map(m, n, {0, 0}, {20, 30});
     // auto [x_step, y_step] = loc_map.step();

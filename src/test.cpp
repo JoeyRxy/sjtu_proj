@@ -1,4 +1,5 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <config.h>
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/depth_first_search.hpp>
@@ -25,7 +26,7 @@ RUN_OFF(knn) {
     cout << __color::bg_blu() << "--- knn ---" << __color::bg_def() << endl;
     // string file = "../data/cellinfo-campus_040312.txt";
     string file = "../data/new/train.txt";
-    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+    auto & pci_order = GetConfig().pci_order;
     auto knn = get_knn(file, pci_order);
     int total = 0, cnt = 0;
     string test_file = "../data/new/test.txt";
@@ -85,13 +86,13 @@ RUN(procedure) {
 
     int top_k = 3000;
 
-    vector<int> pci_order = {117, 118, 314, 331, 997, 998};
+    auto& pci_order = GetConfig().pci_order;
     // ---- location map ----
     auto loc_map = load_loc_map();
     // ------ sensation & markov ------
     auto markovs = get_markov(sensor_file, loc_map);
     // check_markov(markovs[0], loc_map.get_loc_set());
-    int T = markovs.size() + 1;
+    auto T = markovs.size() + 1;
     auto knn = get_knn(file, pci_order, top_k);
     std::list<std::pair<int, std::vector<RSRP_TYPE>>> test_data_aligned;
     load_data_aligned(test_file, test_data_aligned, pci_order);

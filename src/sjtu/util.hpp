@@ -95,6 +95,39 @@ inline bool load_data_aligned(
     return true;
 }
 
+inline bool load_data_aggregated(std::string const& file,
+    std::unordered_map<int, std::list<std::vector<RSRP_TYPE>>>& loc_data_map,
+    std::vector<int> const& pci_order, RSRP_TYPE default_rsrp = -140) {
+    std::ifstream in(file);
+    if (in.fail()) {
+        std::cerr << "Failed to open file" << std::endl;
+        in.close();
+        return false;
+    }
+    std::unordered_map<int, int> idx_map;
+    idx_map.reserve(pci_order.size());
+    for (size_t i = 0; i < pci_order.size(); ++i) {
+        idx_map[pci_order[i]] = i;
+    }
+    Parser parser(in);
+    if (parser.parse()) {
+        for (auto && cellinfo : parser.get()) {
+            std::vector<RSRP_TYPE> rsrp_aligned(pci_order.size(), default_rsrp);
+            for (auto && [pci, rsrp] : cellinfo.pci_info_list) {
+                try {
+                    rsrp_aligned[idx_map.at(pci)] = rsrp->rsrp;
+                } catch(std::out_of_range&) {}
+            }
+            loc_data_map[cellinfo.loc].emplace_back(std::move(rsrp_aligned));
+        }
+    } else {
+        in.close();
+        return false;
+    }
+    in.close();
+    return true;
+}
+
 inline bool load_data_aligned_xlsx(
     std::string const& dir_path,
     std::unordered_map<std::string, std::list<std::vector<RSRP_TYPE>>>& loc_data_aligned,

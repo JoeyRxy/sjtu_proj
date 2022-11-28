@@ -3,6 +3,7 @@
 #include <functional>
 #include <vector>
 #include <stdexcept>
+#include <algorithm>
 
 namespace rxy {
 

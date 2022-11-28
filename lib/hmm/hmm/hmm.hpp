@@ -5,6 +5,7 @@
 #include "probability.hpp"
 #include "sensation.hpp"
 #include <unordered_set>
+#include <string>
 
 namespace rxy {
 
