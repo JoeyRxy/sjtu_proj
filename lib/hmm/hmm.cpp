@@ -1,11 +1,17 @@
 #include "hmm.hpp"
+#include <algorithm>
+#include <exception>
+#include <execution>
+#ifdef DEBUG
+#include <iostream>
+#endif
 
 namespace rxy {
 #ifdef DEBUG
-
 static void pM(std::unordered_set<LocationPtr> const & loc_set, Markov const & markov, LocationPtr const & loc) {
+    auto& tran_prob = markov.get_tran_prob().at(loc);
     for (auto & prv: loc_set) {
-        auto prob = *markov(prv, loc);
+        auto prob = tran_prob.at(prv);
         if (prob > 0) {
             std::cout << prv->point << " -> " << loc->point << ": " << prob << '\n';
         }
@@ -45,88 +51,101 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
     auto T = emission_probs.size();
     if (T == 0) throw std::runtime_error("T == 0");
     if (markovs.size() != T - 1) throw std::runtime_error("markovs.size() != T - 1");
-    std::unordered_map<LocationPtr, Prob> prv, cur;
-    prv.reserve(N);
-    cur.reserve(N);
-    std::vector<std::unordered_map<LocationPtr, LocationPtr>> psi(T - 1);
-    // t = 0
-    bool all_zero = true;
-    for (auto&& loc : *loc_set) {
-        auto p = init_prob.at(loc) * emission_probs[0].at(loc);
-        if (p != Prob::ZERO) {
-            all_zero = false;
+    
+    std::unordered_map<LocationPtr, Prob> example;
+    std::unordered_map<LocationPtr, LocationPtr> example2;
+
+    example.reserve(N);
+    example2.reserve(N);
+
+    for(auto&& loc : *loc_set) {
+        example[loc];
+        example2[loc];
+    }
+    
+    std::vector<std::unordered_map<LocationPtr, Prob>> dp(T, example);
+    std::vector<std::unordered_map<LocationPtr, LocationPtr>> psi(T - 1, example2);
+
+    auto init = [&init_prob, &emission_probs, &dp, this](size_t t) {
+        bool all_zero = true;
+        auto & cur = dp[t];
+        for (auto && loc : *loc_set) {
+            auto p = init_prob.at(loc) * emission_probs[t].at(loc);
+            if (p != Prob::ZERO) all_zero = false;
+            cur[loc] = p;
         }
-        cur[loc] = p;
-    }
-    if (all_zero) {
-        throw std::runtime_error("all zero for start");
-    }
+        if (all_zero) throw std::runtime_error("all zero for t = " + std::to_string(t));
+    };
+
     std::vector<LocationPtr> ret(T);
+    auto recover = [&ret, &psi, &dp](int s, int t) {
+        ret[t] = std::ranges::max_element(dp[t], [](auto const & lhs, auto const & rhs) { return lhs.second < rhs.second; })->first;
+        for (int i = t - 1; i >= s; --i) {
+            ret[i] = psi[i][ret[i + 1]];
+            if (!ret[i]) {
+#ifdef DEBUG
+                std::cerr << i << " is null" << std::endl;
+#endif
+                ret[i] = std::ranges::max_element(dp[i], [](auto const & lhs, auto const & rhs) { return lhs.second < rhs.second; })->first;
+            }
+        }
+    };
+    
+    // t = 0
     size_t start = 0;
+    init(0);
     for (size_t t = 1; t < T; ++t) {
+#ifdef DEBUG
+        std::cout << "t = " << t << std::endl;
+#endif
         auto const& markov = *markovs[t - 1];
-        std::swap(prv, cur);
         auto& et = emission_probs[t];
         auto& pt = psi[t - 1];
+        auto& prv = dp[t - 1], &cur = dp[t];
+        for (auto && loc : *loc_set) pt.emplace(loc, nullptr);
         // cur.clear();
-        for (auto&& loc : *loc_set) {
+        bool all_zero = true;
+        std::for_each(std::execution::par_unseq, loc_set->begin(), loc_set->end(), 
+            [this, &all_zero, &prv, &markov, &et, &cur, &pt](LocationPtr const & loc) {
             Prob max_prob;
-            LocationPtr max_loc = nullptr;
+            LocationPtr max_loc;
+            auto & tran_prob = markov.get_tran_prob().at(loc);
             for (auto&& prev_loc : *loc_set) {
                 // markov[prv_loc][loc]: can optimize for locality
-                Prob prob = prv[prev_loc] * markov(prev_loc, loc);
-                if (prob > max_prob) {
-                    max_prob = prob;
-                    max_loc = prev_loc;
+                try {
+                    Prob prob = prv[prev_loc] * tran_prob.at(prev_loc);
+                    if (prob > max_prob) {
+                        max_prob = prob;
+                        max_loc = prev_loc;
+                    }
+                } catch (std::out_of_range &e) {
+                    std::cerr << "fuck 1:" << loc->point << ";" << prev_loc->point << std::endl;
+                    throw e;
                 }
             }
-            if (max_loc) {
+            try {
                 max_prob *= et.at(loc);
-                if (max_prob != Prob::ZERO) {
-                    all_zero = false;
-                }
-                cur[loc] = max_prob;
-                pt[loc] = max_loc;
-            } else {
-                max_prob = Prob::ZERO;
-                max_loc = nullptr;
-                for (auto && loc : *loc_set) {
-                    if (prv[loc] > max_prob) {
-                        max_prob = prv[loc];
-                        max_loc = loc;
-                    }
-                }
-                ret[t - 1] = max_loc;
-                for (auto _t = t - 2; _t >= start; --_t) {
-                    ret[_t] = psi[_t][ret[_t + 1]];
-                }
-                start = t;
-                for (auto && loc : *loc_set) {
-                    auto p = init_prob.at(loc) * et.at(loc);
-                    if (p != Prob::ZERO) {
-                        all_zero = false;
-                    }
-                    cur[loc] = p;
-                }
-                if (all_zero) {
-                    throw std::runtime_error("all zero for t = " + std::to_string(t));
-                }
-                break;
+            } catch (std::out_of_range & e) {
+                std::cerr << "fuck 2:" << loc->point << std::endl;
+                throw e;
             }
+            if (max_prob > 0) all_zero = false;
+            cur[loc] = max_prob;
+            pt[loc] = max_loc;
+        });
+        if (all_zero) {
+            std::cout << t << ": re-init" << std::endl;
+            // recover path
+            recover(start, t - 1);
+            // re-init
+            start = t;
+            init(start);
         }
     }
-    Prob max_prob;
-    LocationPtr max_loc = nullptr;
-    for (auto&& loc : *loc_set) {
-        if (cur[loc] > max_prob) {
-            max_prob = cur[loc];
-            max_loc = loc;
-        }
-    }
-    ret[T - 1] = max_loc;
-    for (auto t = T - 2; t >= start; --t) {
-        ret[t] = psi[t][ret[t + 1]];
-    }
+    recover(start, T - 1);
+#ifdef DEBUG
+    std::cout << "viterbi done" << std::endl;
+#endif
     return ret;
 }
 

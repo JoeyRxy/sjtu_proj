@@ -51,7 +51,8 @@ LocationMap load_loc_map() {
         }
     }
     // set obstacles
-    loc_map.remove_ext_rect({4, 10}, {16, 28});
+    loc_map.remove_ext_rect({4, 12}, {16, 28});
+    loc_map.remove_ext_rect({4,4},{16,8});
     return loc_map;
 }
 

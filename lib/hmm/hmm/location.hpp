@@ -2,6 +2,7 @@
 #include <cmath>
 #include <configure.hpp>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <numbers>
 #include <iostream>
@@ -105,7 +106,7 @@ inline constexpr Point::value_type minkowski(Point const& lhs, Point const& rhs,
 }
 
 inline std::ostream& operator<<(std::ostream& os, Point const& p) {
-    os << "(" << p.x_ << ", " << p.y_ << ")";
+    os << '(' << p.x_ << ", " << p.y_ << ')';
     return os;
 }
 
@@ -128,7 +129,7 @@ struct Location {
 
 inline bool operator==(LocationPtr lhs, LocationPtr rhs) {
     if (lhs && rhs) return *lhs == *rhs;
-    else return lhs == rhs;
+    else            return lhs == rhs;
 }
 
 }  // namespace rxy
@@ -145,8 +146,7 @@ struct hash<rxy::Point> {
 template <>
 struct hash<rxy::PointPtr> {
     size_t operator()(rxy::PointPtr const& p) const {
-        if (p == nullptr) return std::numeric_limits<size_t>::max();
-        return hash<rxy::Point::value_type>()(p->x()) ^ hash<rxy::Point::value_type>()(p->y());
+        return p ? (hash<rxy::Point::value_type>()(p->x()) ^ hash<rxy::Point::value_type>()(p->y())) : std::numeric_limits<size_t>::max();
     }
 };
 
@@ -158,8 +158,7 @@ struct hash<rxy::Location> {
 template <>
 struct hash<rxy::LocationPtr> {
     size_t operator()(rxy::LocationPtr const& loc) const {
-        if (loc == nullptr) return numeric_limits<size_t>::max();
-        return loc->get_hash();
+        return loc ? loc->get_hash() : numeric_limits<size_t>::max();
     }
 };
 

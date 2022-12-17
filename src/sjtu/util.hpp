@@ -314,6 +314,7 @@ inline KNN<RSRP_TYPE> get_knn(std::string const& file, std::vector<int> const& p
 }
 
 inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_map) {
+    std::cout << "get_markov" << std::endl;
     static Point North{0, 1}, South{0, -1}, East{1, 0}, West{-1, 0}, Stop{0, 0};
     std::unordered_map<Sensation, MarkovPtr> markov_cache;
     std::ifstream ifs(sensor_file);
@@ -321,6 +322,7 @@ inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_m
     std::list<Sensation> sensations;
     double dt;
     ifs >> dt;
+    std::cout << dt << std::endl;
     char c;
     while (ifs.get(c)) {
         switch (c) {
@@ -344,6 +346,7 @@ inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_m
         }
         auto it = markov_cache.emplace(sensations.back(), nullptr).first;
         if (!it->second) {
+            std::cout << "loc_markov" << std::endl;
             it->second = std::make_shared<LocMarkov>(loc_map, sensations.back());
         }
     }
@@ -360,7 +363,7 @@ inline auto get_markov(std::string const & sensor_file, LocationMap const& loc_m
     return markovs;
 }
 
-inline void get_emission_prob_using_knn(
+inline void get_emission_prob_by_knn(
     std::list<std::pair<int, std::vector<RSRP_TYPE>>> const& test_data_aligned, KNN<RSRP_TYPE> const& knn,
     LocationMap const& loc_map, std::vector<EmissionProb>& emission_probs,
     std::vector<LocationPtr>& locations, int T = -1) {
@@ -378,6 +381,12 @@ inline void get_emission_prob_using_knn(
         }
         emission_probs.emplace_back(std::move(prob_map));
     }
+}
+
+inline void get_emission_prob_by_dnn(std::list<std::pair<int, std::vector<RSRP_TYPE>>> const& test_data_aligned, KNN<RSRP_TYPE> const& knn,
+    LocationMap const& loc_map, std::vector<EmissionProb>& emission_probs,
+    std::vector<LocationPtr>& locations, int T = -1) {
+
 }
 
 }  // namespace rxy

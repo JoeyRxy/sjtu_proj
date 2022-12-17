@@ -186,10 +186,8 @@ class LocationMap {
     void remove_ext_rect(Point ld, Point ru) {
         auto [x, y] = get_ext_index(ld);
         auto [x_end, y_end] = get_ext_index(ru);
-        if (x > x_end) std::swap(x, x_end);
-        if (y > y_end) std::swap(y, y_end);
-        if (x_end != m_ext - 1) x_end++;
-        if (y_end != n_ext - 1) y_end++;
+        if (x_end < m_ext) x_end++;
+        if (y_end < n_ext) y_end++;
         for (; x < x_end; ++x) {
             for (int _y = y; _y < y_end; ++_y) {
                 if (ext_map[x][_y] != nullptr) {
@@ -253,10 +251,7 @@ class LocationMap {
     void compute_distance() const;
 
     Point::value_type distance(LocationPtr loc1, LocationPtr loc2) const {
-        if (!computed) {
-            compute_distance();
-            computed = true;
-        }
+        compute_distance();
         return dist_map.at(loc1).at(loc2);
     }
 
@@ -265,10 +260,7 @@ class LocationMap {
         check(p2);
         auto [i, j] = get_ext_index(p1);
         auto [x, y] = get_ext_index(p2);
-        if (!computed) {
-            compute_distance();
-            computed = true;
-        }
+        compute_distance();
         return dist_map.at(ext_map[i][j]).at(ext_map[x][y]);
     }
 };

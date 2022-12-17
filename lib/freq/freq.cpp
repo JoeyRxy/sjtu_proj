@@ -3,9 +3,10 @@
 #include <iterator>
 #include <numeric>
 
-using iter_t = std::list<std::vector<RSRP_TYPE>>::const_iterator;
+namespace rxy {
 
-std::vector<double> calc(iter_t begin, iter_t end, double lambda = 1.) {
+
+std::vector<double> calc(std::list<std::vector<RSRP_TYPE>>::const_iterator begin, std::list<std::vector<RSRP_TYPE>>::const_iterator end, double lambda) {
     const int N = begin->size();
     std::vector<double> arr(98 * N);
     std::vector<std::vector<int>> cnt(N, std::vector<int>(97, 0));
@@ -42,12 +43,13 @@ std::unordered_map<int, std::vector<std::vector<double>>> analyze(std::unordered
             throw std::exception("duration too large");
         }
         freq_ls.reserve(ls.size() - duration + 1);
-        iter_t it = ls.cbegin(), jt = it;
+        auto it = ls.cbegin(), jt = it;
         std::advance(jt, duration);
         while (jt != ls.cend()) {
-            freq_ls.push_back(calc(it, jt));
-            ++it, ++jt;
+            freq_ls.push_back(calc(it++, jt++));
         }
     }
     return ans;
+}
+
 }

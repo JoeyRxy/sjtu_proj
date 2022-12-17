@@ -56,7 +56,7 @@ inline Prob operator+(Prob const &lhs, Prob const &rhs) {
 }
 
 inline std::ostream& operator<<(std::ostream& os, Prob const &prob) {
-    os << std::exp(prob.prob);
+    os << prob.prob << "<->" << std::exp(prob.prob);
     return os;
 }
 

@@ -1,7 +1,8 @@
 #ifndef CONFIGURE_H
 #define CONFIGURE_H
+#include <string>
 
-#cmakedefine CONF_PATH R"(${CONF_PATH})"
+#cmakedefine CONF_PATH std::string(R"(${CONF_PATH})")
 
 #cmakedefine RSRP_TYPE ${RSRP_TYPE}
 #cmakedefine POINT_TYPE ${POINT_TYPE}
@@ -9,5 +10,6 @@
 #cmakedefine ND_MU ${ND_MU}
 #cmakedefine ND_SIGMA ${ND_SIGMA}
 #cmakedefine EPSILON ${EPSILON}
+#cmakedefine ROOT_DIR std::string(R"(${ROOT_DIR})")
 
 #endif

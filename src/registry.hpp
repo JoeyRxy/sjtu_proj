@@ -63,6 +63,7 @@ public:
         for (auto test : tests) {
             std::cout << "Testing: " << test->name() << " ... " << std::endl;
             test->run();
+            std::cout << test->name() << ": Done" << std::endl;
         }
     }
 };
