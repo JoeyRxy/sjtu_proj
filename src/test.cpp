@@ -1,4 +1,5 @@
 #include <any>
+#include <chrono>
 #include <config.h>
 #include <filesystem>
 #include <fstream>
@@ -284,9 +285,9 @@ RUN_OFF(dnn) {
 }
 
 RUN(hmm_knn) {
-    string train_file = ROOT_DIR + "/data/train.txt";
-    string sensor_file = ROOT_DIR + "/data/test_sensor.txt";
-    string test_file = ROOT_DIR + "/data/test.txt";
+    string train_file = ROOT_DIR + "/data/1/train.txt";
+    string sensor_file = ROOT_DIR + "/data/1/test_sensor.txt";
+    string test_file = ROOT_DIR + "/data/1/test.txt";
 
     int top_k = 3000;
 
@@ -337,9 +338,13 @@ RUN(hmm_knn) {
     vector<EmissionProb> emission_probs;
     vector<LocationPtr> locations;
     cout << "get emission prob ..." << endl;
+    auto tik = std::chrono::high_resolution_clock::now();
     get_emission_prob_by_knn(test_data_aligned, knn, loc_map, emission_probs,
                              locations, T);
-    cout << "GOT" << endl;
+    auto tok = std::chrono::high_resolution_clock::now();
+
+    using dur = std::chrono::duration<double, std::milli>;
+    cout << "GOT: duration: " << dur(tok - tik) << " ms" << endl;
     // {
     //     int t = 0;
     //     for (auto & emit_prob : emission_probs) {
@@ -356,9 +361,11 @@ RUN(hmm_knn) {
     }
     // ------ hmm ------
     cout << "viterbi ..." << endl;
+    tik = std::chrono::high_resolution_clock::now();
     auto pred_locs = HMM{loc_map.get_ext_list()}.viterbi(markovs, init_probs,
                                                          emission_probs);
-    cout << "GOT" << endl;
+    tok = std::chrono::high_resolution_clock::now();
+    cout << "GOT, duration: " << dur(tok - tik) << " ms" << endl;
     int cnt = 0;
     double rmse = 0;
     for (int t = 0; t < T; ++t) {
@@ -384,6 +391,7 @@ RUN(hmm_knn) {
         }
     }
 
+    cout << "noise: " << GetConfig().noise << endl;
     cout << "HMM's accuracy = " << (double)cnt / T << endl;
     cout << "HMM's RMSE: " << sqrt(rmse / T) << endl;
     cout << "KNN's accuracy: " << static_cast<double>(knn_cnt) / total << endl;

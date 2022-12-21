@@ -41,6 +41,7 @@ include_directories(${CMAKE_BINARY_DIR})
 find_package(Boost REQUIRED COMPONENTS json)
 find_path(MLPACK_INCLUDE_DIRS "mlpack/mlpack.hpp" REQUIRED)
 find_package(Armadillo CONFIG REQUIRED)
+find_package(GSL REQUIRED)
 
 add_subdirectory(lib/parser1)
 add_subdirectory(lib/hmm)
@@ -64,4 +65,6 @@ PRIVATE
     ${LIBS} 
     ${Boost_LIBRARIES} 
     ${ARMADILLO_LIBRARIES}
+    GSL::gsl
+    GSL::gslcblas
 )

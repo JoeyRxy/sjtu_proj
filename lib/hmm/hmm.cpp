@@ -67,6 +67,9 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
     std::vector<std::unordered_map<LocationPtr, LocationPtr>> psi(T - 1, example2);
 
     auto init = [&init_prob, &emission_probs, &dp, this](size_t t) {
+#ifdef DEBUG
+        std::cout << "init(" << t << ')' << std::endl;
+#endif
         bool all_zero = true;
         auto & cur = dp[t];
         for (auto && loc : *loc_set) {
@@ -74,7 +77,9 @@ std::vector<LocationPtr> const HMM::viterbi(std::vector<MarkovPtr> const& markov
             if (p != Prob::ZERO) all_zero = false;
             cur[loc] = p;
         }
-        if (all_zero) throw std::runtime_error("all zero for t = " + std::to_string(t));
+        if (all_zero) {
+            throw std::runtime_error("all zero for t = " + std::to_string(t));
+        }
     };
 
     std::vector<LocationPtr> ret(T);

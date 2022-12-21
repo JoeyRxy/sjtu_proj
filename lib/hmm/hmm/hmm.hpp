@@ -3,7 +3,6 @@
 #include "location.hpp"
 #include "markov.hpp"
 #include "probability.hpp"
-#include "sensation.hpp"
 #include <unordered_set>
 #include <string>
 

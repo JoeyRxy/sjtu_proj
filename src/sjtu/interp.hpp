@@ -5,8 +5,11 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+#include <sstream>
 
+#include "config.h"
 #include "hmm/location.hpp"
+#include "hmm/probability.hpp"
 
 namespace rxy {
 
@@ -27,14 +30,14 @@ class ProbInterp {
             for (auto&& [point, prob_map] : *points_to_interp) {
                 prob_map[gsl_spline2d_eval(spline, point.x(), point.y(), x_acc, y_acc)] += _prob;
             }
-            return;
-        }
-        auto ne = next(iter);
-        int x_idx = x_map.at(iter->first.x());
-        int y_idx = y_map.at(iter->first.y());
-        for (auto&& [rsrp, prob] : iter->second) {
-            gsl_spline2d_set(spline, z.data(), x_idx, y_idx, rsrp);
-            dfs(ne, _prob * prob);
+        } else {
+            auto ne = next(iter);
+            int x_idx = x_map[iter->first.x()];
+            int y_idx = y_map[iter->first.y()];
+            for (auto&& [rsrp, prob] : iter->second) {
+                gsl_spline2d_set(spline, z.data(), x_idx, y_idx, rsrp);
+                dfs(ne, _prob * prob);
+            }
         }
     }
 
@@ -52,7 +55,7 @@ class ProbInterp {
                 std::ostringstream oss;
                 oss << "prob map of point " << loc << " is empty";
                 throw std::runtime_error(oss.str());
-            } else if (sz > ENUMER_LIMIT) {
+            } else if (sz > GetConfig().enumer_limit) {
                 throw std::runtime_error("prob map too large to compute cross product");
             }
         }
